@@ -1483,14 +1483,14 @@ function renderHelp() {
   let topZone, leftZone, rightZone;
   if (mode === 'fen') {
     topZone = zone('top', q.top, '总数');
-    const knownJar = zone(knownSide, knownVal, `${sideName(knownSide)}罐子`, 'known');
+    const knownJar = zone(knownSide, knownVal, sideName(knownSide), 'known');
     const unknownJar = zone(otherSide, '?', '数一数', 'unknown');
     leftZone = knownSide === 'left' ? knownJar : unknownJar;
     rightZone = knownSide === 'left' ? unknownJar : knownJar;
   } else {
     topZone = zone('top', '?', '一共几个？');
-    leftZone = zone('left', helpState.left, '左边罐子');
-    rightZone = zone('right', helpState.right, '右边罐子');
+    leftZone = zone('left', helpState.left, '左边');
+    rightZone = zone('right', helpState.right, '右边');
   }
   // 右侧操作区跟随题图方向：分→合时两个罐子在上、总数在下；合→分时总数在上
   const jarsRow = `<div class="help-jars">${leftZone}${rightZone}</div>`;
