@@ -440,9 +440,9 @@ const ANIMALS = [
   { key:'kuromi', name:'库洛米', color:'#A98BFF', c1:'#E3D7FF', c2:'#CBB4FF' },
   { key:'egg',    name:'蛋仔',   color:'#F5A623', c1:'#FFEDB8', c2:'#FFD770' },
   { key:'elsa',   name:'爱莎',   color:'#4FB8EE', c1:'#D5EEFF', c2:'#A9DBFF' },
-  { key:'egg2',   name:'粉蛋仔', color:'#FF7EB6', c1:'#FFDBEC', c2:'#FFB3D6' }
+  { key:'lotso',  name:'草莓熊', color:'#E4547E', c1:'#FFE3EC', c2:'#FFC2D6' }
 ];
-/* 卡通简化版角色：库洛米 / 蛋仔 / 爱莎公主 / 粉色蛋仔 */
+/* 卡通简化版角色：库洛米 / 蛋仔 / 爱莎公主 / 草莓熊 */
 function animalSVG(kind, n, color) {
   const badge = `<circle cx="50" cy="95" r="13" fill="${color}" stroke="#fff" stroke-width="2.5"/>
                  <text x="50" y="100" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${n}</text>`;
@@ -471,10 +471,10 @@ function animalSVG(kind, n, color) {
     </svg>`;
   }
 
-  if (kind === 'egg' || kind === 'egg2') {
-    const body = kind === 'egg2' ? '#FFD6E7' : '#FFF0C2';
-    const line = kind === 'egg2' ? '#F08FB8' : '#E8B84A';
-    const hat  = kind === 'egg2' ? '#63C7F5' : '#FF8FC2';
+  if (kind === 'egg') {
+    const body = '#FFF0C2';
+    const line = '#E8B84A';
+    const hat  = '#FF8FC2';
     return `<svg viewBox="0 0 100 120">
       ${base}
       <ellipse cx="33" cy="110" rx="9" ry="5" fill="${line}" opacity=".5"/>
@@ -492,6 +492,29 @@ function animalSVG(kind, n, color) {
       <circle cx="33" cy="72" r="4" fill="#FFB3D4" opacity=".9"/>
       <circle cx="67" cy="72" r="4" fill="#FFB3D4" opacity=".9"/>
       <path d="M46 71 q4 4 8 0" stroke="#3A3346" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      ${badge}
+    </svg>`;
+  }
+
+  if (kind === 'lotso') {
+    return `<svg viewBox="0 0 100 120">
+      ${base}
+      <ellipse cx="50" cy="102" rx="25" ry="16" fill="#E4547E"/>
+      <circle cx="22" cy="30" r="14" fill="#E4547E"/>
+      <circle cx="22" cy="30" r="7.5" fill="#F9AFC6"/>
+      <circle cx="78" cy="30" r="14" fill="#E4547E"/>
+      <circle cx="78" cy="30" r="7.5" fill="#F9AFC6"/>
+      <ellipse cx="50" cy="58" rx="33" ry="30" fill="#E4547E"/>
+      <ellipse cx="33" cy="40" rx="7" ry="4.5" fill="#F2799E" opacity=".55"/>
+      <ellipse cx="50" cy="67" rx="18.5" ry="12.5" fill="#F9C6D4"/>
+      <ellipse cx="50" cy="61.5" rx="7" ry="5.2" fill="#7A2E4E"/>
+      <path d="M50 66.5 q-5 6 -10 2.5 M50 66.5 q5 6 10 2.5" stroke="#7A2E4E" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M32 42 q5 -3.5 9.5 -1 M68 42 q-5 -3.5 -9.5 -1" stroke="#B93B60" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <ellipse cx="38" cy="51" rx="3.6" ry="4.8" fill="#4A2B36"/>
+      <ellipse cx="62" cy="51" rx="3.6" ry="4.8" fill="#4A2B36"/>
+      <circle cx="39.2" cy="49.6" r="1.3" fill="#fff"/><circle cx="63.2" cy="49.6" r="1.3" fill="#fff"/>
+      <circle cx="25" cy="65" r="4" fill="#FF9FBF" opacity=".7"/>
+      <circle cx="75" cy="65" r="4" fill="#FF9FBF" opacity=".7"/>
       ${badge}
     </svg>`;
   }
