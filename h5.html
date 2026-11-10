@@ -111,15 +111,15 @@
   .ntext.q { fill: #FFA8D2; font-size: 32px; }
   .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
   .flip-toggle.flip-btn {
-    position: absolute; right: 0; bottom: -34px; display: inline-flex; align-items: center; gap: 5px;
-    height: 32px; padding: 0 10px 0 13px; border-radius: 16px; border: 2px solid #FFD9A8;
-    background: #FFF6E6; color: #C77A00; font: inherit; font-size: 15px; font-weight: 800; line-height: 1;
-    cursor: pointer; box-shadow: 0 2px 6px rgba(199,122,0,.14);
+    position: absolute; right: 0; bottom: -24px; display: inline-flex; align-items: center; gap: 7px;
+    height: 42px; padding: 0 13px 0 17px; border-radius: 21px; border: 2.5px solid #FFD9A8;
+    background: #FFF6E6; color: #C77A00; font: inherit; font-size: 20px; font-weight: 800; line-height: 1;
+    cursor: pointer; box-shadow: 0 3px 8px rgba(199,122,0,.16);
   }
   .flip-toggle.flip-btn:hover { background: #FFE7C2; }
   .flip-toggle.flip-btn:active { transform: scale(.96); }
   .flip-toggle.flip-btn:disabled { opacity: .45; cursor: default; transform: none; }
-  .qbox .flip-btn svg { width: 16px; height: 16px; max-width: none; flex: none; display: block; }
+  .qbox .flip-btn svg { width: 21px; height: 21px; max-width: none; flex: none; display: block; }
 
   /* 拼音题图（听音辨字） */
   .py-wrap { display: flex; flex-direction: column; align-items: center; gap: 9px; width: 100%; }
@@ -945,7 +945,7 @@ function diagramHTML(g) {
   const svg = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
   if (g.q.kind) return svg;
   const dis = (g.done || g.lock || finished) ? ' disabled' : '';
-  return `<div class="diagram-wrap">${svg}<button type="button" class="flip-toggle flip-btn" aria-label="点击上下翻转" title="点击上下翻转"${dis}><span>${g.q.flip ? '分' : '合'}</span>${FLIP_ICON}</button></div>`;
+  return `<div class="diagram-wrap">${svg}<button type="button" class="flip-toggle flip-btn" aria-label="点击上下翻转" title="点击上下翻转"${dis}><span>切换</span>${FLIP_ICON}</button></div>`;
 }
 
 /* ---------------- 键盘 ---------------- */
