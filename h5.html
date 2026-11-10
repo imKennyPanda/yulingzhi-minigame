@@ -1360,7 +1360,7 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </svg>
     <div class="pyb-row">
       ${slot(pickSm, !!pickSm, '声母')}
-      ${slot(toneText, !!pickTone, '声调', pickTone ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
+      ${slot(toneText, !!pickTone, '韵母', pickTone ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
       ${slot(fullPinyin, !!(pickSm && pickTone), '完整拼音')}
     </div>
   </div>`;
