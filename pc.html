@@ -188,6 +188,9 @@
     font-size: 24px; font-weight: 800; cursor: pointer; transition: .12s; display: grid; place-items: center;
   }
   .key:hover { background: #FFF2F9; border-color: #FFC2E0; color: #FF6FAE; transform: translateY(-2px); }
+  .key.off { background: #F7F3FA; border-style: dashed; cursor: default; }
+  .key.off:hover { background: #F7F3FA; border-color: #EFE4F6; color: #4A3E5C; transform: none; }
+  .key.off:active { transform: none; }
   .key.sel { background: linear-gradient(135deg, #FFB0D4, #FF6FAE); border-color: #FF6FAE; color: #fff; box-shadow: 0 5px 12px rgba(255,107,53,.35); }
   .acts { display: flex; gap: 10px; margin-top: 12px; }
   .btn {
@@ -1087,9 +1090,11 @@ function renderPad(g) {
     const curOf = slot => slot === 'sm' ? g.pickSm : slot === 'ym' ? g.pickYm : g.pickTone;
     const grid = (arr, slot) => `<div class="pad-grid">` + arr.map(v => {
       const cur = curOf(slot);
-      const label = slot === 'tone' ? `<b>${toneFinal(toneYm, +v)}</b>` : v;
+      // 未选韵母时，声调选项保持空白，避免提前显示正确答案
+      const toneBlank = slot === 'tone' && !g.pickYm;
+      const label = slot === 'tone' ? `<b>${toneBlank ? '' : toneFinal(toneYm, +v)}</b>` : v;
       const cls = slot === 'tone' ? 'key charKey toneKey' : 'key charKey';
-      return `<div class="${cls}${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
+      return `<div class="${cls}${toneBlank ? ' off' : ''}${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
     }).join('') + '</div>';
     g.padEl.innerHTML = `<div class="pyb-sections">
       <div class="pyb-sec">${cap('① 选声母')}${grid(g.q.smOpts, 'sm')}</div>
@@ -1099,11 +1104,15 @@ function renderPad(g) {
     g.padEl.querySelectorAll('.key').forEach(k => {
       k.onclick = () => {
         if (g.done || g.lock || finished) return;
-        if (k.dataset.slot === 'sm') g.pickSm = k.dataset.val;
-        else if (k.dataset.slot === 'ym') g.pickYm = k.dataset.val;
-        else g.pickTone = Number(k.dataset.val);
-        if (k.dataset.slot === 'tone') playToneSound(curYm, Number(k.dataset.val), sayOf('tone', k.dataset.val));
-        else playPinyinSound(k.dataset.slot, k.dataset.val, sayOf(k.dataset.slot, k.dataset.val));
+        if (k.dataset.slot === 'tone') {
+          if (!g.pickYm) return;                   // 先选韵母，声调才有内容
+          g.pickTone = Number(k.dataset.val);
+          playToneSound(curYm, Number(k.dataset.val), sayOf('tone', k.dataset.val));
+        } else {
+          if (k.dataset.slot === 'sm') g.pickSm = k.dataset.val;
+          else g.pickYm = k.dataset.val;
+          playPinyinSound(k.dataset.slot, k.dataset.val, sayOf(k.dataset.slot, k.dataset.val));
+        }
         render(g);
       };
     });
