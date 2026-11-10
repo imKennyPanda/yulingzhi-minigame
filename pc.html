@@ -882,11 +882,12 @@ for (let i = 0; i <= STEPS; i++) {
 /* ---------------- 答题台 ---------------- */
 /* 拼音题图：声母 + 韵母 + 声调 三张卡片，点击即发声 */
 function pinyinDiagram(q, pick) {
+  const toneSay = (YM_TONE_SAY[q.ym] && YM_TONE_SAY[q.ym][q.tone - 1]) || TONE_NAME[q.tone];
   return `<div class="py-wrap">
     <div class="py-row">
-      <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
-      <div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>
-      <div class="py-box" data-say="${TONE_NAME[q.tone]}"><b>${TONE_MARK[q.tone]}</b><span>${TONE_NAME[q.tone]}</span></div>
+      <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}" data-kind="sm" data-key="${q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
+      <div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>
+      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${TONE_MARK[q.tone]}</b><span>${TONE_NAME[q.tone]}</span></div>
     </div>
     <button type="button" class="py-blend" data-say="${q.char}">🔊 拼一拼 · 听整字</button>
     ${pick !== null ? `<div style="font-size:13px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
@@ -993,7 +994,11 @@ GROUPS.forEach(g => {
     const eye = e.target.closest('.pyb-eye');
     if (eye) { g.showPy = !g.showPy; render(g); return; }   // 小眼睛：显示/隐藏拼音
     const t = e.target.closest('[data-say]');
-    if (t) speak(t.dataset.say);
+    if (!t) return;
+    // 认字练习：声母、韵母、声调也播放标准录音，和拼音表/拼写练习一致
+    if (t.dataset.kind === 'sm' || t.dataset.kind === 'ym') playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
+    else if (t.dataset.kind === 'tone') playToneSound(t.dataset.ym, +t.dataset.key, t.dataset.say);
+    else speak(t.dataset.say);
   });
 });
 
