@@ -1489,8 +1489,9 @@ function renderHelp() {
     rightZone = knownSide === 'left' ? unknownJar : knownJar;
   } else {
     topZone = zone('top', '?', '一共几个？');
-    leftZone = zone('left', helpState.left, '左边');
-    rightZone = zone('right', helpState.right, '右边');
+    // 罐子上的数字始终对应原题，拖走胡萝卜后也不变
+    leftZone = zone('left', q.parts[0], '左边');
+    rightZone = zone('right', q.parts[1], '右边');
   }
   // 右侧操作区跟随题图方向：分→合时两个罐子在上、总数在下；合→分时总数在上
   const jarsRow = `<div class="help-jars">${leftZone}${rightZone}</div>`;
