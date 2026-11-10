@@ -94,7 +94,8 @@
   .st-name { font-size: 16px; font-weight: 800; }
   .st-sub { font-size: 11.5px; color: #A090B2; font-weight: 600; margin-top: 1px; }
   .st-score {
-    margin-left: auto; min-width: 50px; height: 36px; padding: 0 10px; border-radius: 10px; display: grid; place-items: center;
+    margin-left: auto; min-width: 50px; height: 36px; padding: 0 10px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 1px; white-space: nowrap; line-height: 1;
     background: linear-gradient(135deg,#FFB0D4,#FF6FAE); color: #fff; font-size: 16px; font-weight: 800;
   }
   .st-score small { font-size: 11px; opacity: .85; }
@@ -927,12 +928,15 @@ function diagram(q, pick, pickSm, pickYm, pickTone, showPy, withFlip = true) {
   const botRow  = q.flip
     ? box(110, 108, q.top, q.top === null)
     : box(40, 108, q.parts[0], q.parts[0] === null) + box(180, 108, q.parts[1], q.parts[1] === null);
-  const label = q.flip ? '分 ⟶ 合' : '合 ⟶ 分';
-  // 点下面的方向标签即可上下翻转题图（分↔合）
+  // 右侧小按钮显示当前状态（分/合），带上下箭头图标提示可点击翻转
   const flipBtn = withFlip ? `<g class="flip-toggle" role="button" aria-label="点击上下翻转">
     <title>点击上下翻转</title>
-    <rect x="82" y="164" width="136" height="26" rx="13" fill="#FFF6E6" stroke="#FFD9A8" stroke-width="2"/>
-    <text x="150" y="182" text-anchor="middle" font-size="14" fill="#C77A00" font-weight="800">${label} ↕</text>
+    <rect x="202" y="164" width="86" height="28" rx="14" fill="#FFF6E6" stroke="#FFD9A8" stroke-width="2"/>
+    <text x="230" y="184" text-anchor="middle" font-size="18" fill="#C77A00" font-weight="800">${q.flip ? '分' : '合'}</text>
+    <g fill="none" stroke="#C77A00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M260 182 V172 M256 176 L260 172 L264 176"/>
+      <path d="M272 174 V184 M268 180 L272 184 L276 180"/>
+    </g>
   </g>` : '';
   return `<svg viewBox="0 0 300 ${withFlip ? 202 : 176}">${links}${topRow}${botRow}${flipBtn}</svg>`;
 }
