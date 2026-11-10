@@ -1347,11 +1347,14 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   // “③ 选声调”也选对后，再补上声调（显示带调韵母）
   const curSm = pickSm || q.sm;
   const curYm = pickYm || q.ym;
-  const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
-    ? 'u' + curYm.slice(1) : curYm;
+  // j/q/x/y 后的 ü 保留两点、ü 本身不标声调（句 jù → j / ü / jù）：
+  // ü、ün 只显示不带调韵母；üe、üan 的声调本来在 e、a 上，仍正常显示。
+  const juU = ['j', 'q', 'x', 'y'].includes(curSm) && curYm[0] === 'ü';
   const ymCorrect = pickYm !== null && pickYm === q.ym;
   const toneCorrect = ymCorrect && pickTone !== null && pickTone === q.tone;
-  const ymText = ymCorrect ? (toneCorrect ? toneFinal(toneYm, pickTone) : toneYm) : '';
+  const ymText = ymCorrect
+    ? (toneCorrect ? (juU && (curYm === 'ü' || curYm === 'ün') ? curYm : toneFinal(curYm, pickTone)) : curYm)
+    : '';
   // 读音提示与“③ 选声调”完全一致，录音缺失时才用语音兜底
   const toneSay = toneCorrect
     ? ((YM_TONE_SAY[curYm] && YM_TONE_SAY[curYm][pickTone - 1]) || TONE_NAME[pickTone])
