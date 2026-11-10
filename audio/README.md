@@ -5,14 +5,14 @@ H5 / PC 共用的拼音标准发音文件。页面通过 `audio/sm/*.mp3`、`aud
 ## 文件说明
 
 - `sm/`：23 个声母（b p m f d t n l g k h j q x zh ch sh r z c s y w）。
-- `ym/`：31 个韵母。文件名 `v.mp3` / `ve.mp3` / `vn.mp3` 分别对应 ü / üe / ün。
-- `tone/`：韵母四声录音，文件名 `<韵母><声调>.mp3`，例如 `un1.mp3` 是 un 的第一声（wēn）。ü 仍用 `v` 表示，即 `v1`–`v4`、`ve1`–`ve4`、`vn1`–`vn4`。声调卡播放这一组录音，不再用“村”这类带其他声母的汉字代读。
+- `ym/`：35 个韵母。文件名 `v.mp3` / `ve.mp3` / `vn.mp3` / `van.mp3` 分别对应 ü / üe / ün / üan。
+- `tone/`：35 个韵母的四声录音，文件名 `<韵母><声调>.mp3`，例如 `un1.mp3` 是 un 的第一声（wēn）。ü 系列仍用 `v` 表示，即 `v1`–`v4`、`ve1`–`ve4`、`vn1`–`vn4`、`van1`–`van4`。声调卡播放这一组录音，不再用“村”这类带其他声母的汉字代读。
 
 ## 来源与许可
 
 - 声母 23 个 + 标准韵母 24 个：来自 [vaebe/pinyin-audio](https://github.com/vaebe/pinyin-audio)，该仓库在 `package.json` 中声明 ISC License。
 - 组合韵母 ua、uo、ian、iao、uan、iang、uang：来自 [davinfifield/mp3-chinese-pinyin-sound](https://github.com/davinfifield/mp3-chinese-pinyin-sound)，Unlicense（公有领域）；使用零声母音节 wa / wo / yan / yao / wan / yang / wang 的第一声录音。
-- `tone/` 中 30 个韵母的四声：来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio)（仓库 README 注明音频供教育及非商业用途使用），使用其中的零声母音节录音，例如 un 用 wen1–wen4、ui 用 wei1–wei4、ü 用 yu1–yu4。
+- `tone/` 中 35 个韵母的四声：来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio)（仓库 README 注明音频供教育及非商业用途使用），使用其中的零声母音节录音，例如 un 用 wen1–wen4、ui 用 wei1–wei4、ü 用 yu1–yu4。新增的 ia、uai、iong、üan 分别使用 ya1–ya4、wai1–wai4、yong1–yong4、yuan1–yuan4；对应的 `ym/ia.mp3`、`ym/uai.mp3`、`ym/iong.mp3`、`ym/van.mp3` 取各自第一声录音。
 - `tone/ong1.mp3`、`tone/ong3.mp3`、`tone/ong4.mp3`：来自 [vibrantbyte/resources](https://gitee.com/vibrantbyte/resources) 的韵母四声录音，仓库为 Apache-2.0 License。ong 没有零声母音节，因此直接使用韵母录音。
 - `tone/ong2-pure.mp3`：上述韵母录音缺少 ong 的第二声，改用 hanziguru 的 `tong2`（同，tóng），裁掉开头的声母 t（保留 0.285–0.68 秒的纯韵母部分），并把响度调整到与其他 ong 录音一致。
 - 除 `ong2-pure.mp3` 外，音频文件仅重命名和整理，未修改音频内容；`ong2-pure.mp3` 做了去声母裁剪和响度匹配。
