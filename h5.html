@@ -611,6 +611,50 @@ const YM_PARTS = {
   ian: ['i', 'an'], iao: ['i', 'ao'], iang: ['i', 'ang'], iong: ['i', 'ong'],
   uan: ['u', 'an'], uang: ['u', 'ang'], 'üan': ['ü', 'an']
 };
+/* 易混韵母：拼写练习的干扰项优先从这里取，帮助孩子分辨 u/ü、ang/ong、ai/ao 等近似音。
+   每个韵母的第一项是最容易混淆的，三拼音节会为“介母”和“韵母”各取一个。 */
+const YM_CONFUSE = {
+  'a': ['o', 'e', 'ai', 'an'],
+  'o': ['e', 'ao', 'ou', 'u'],
+  'e': ['o', 'er', 'ei', 'en'],
+  'i': ['ü', 'ie', 'in', 'ing', 'u'],
+  'u': ['ü', 'o', 'iu', 'ui', 'un'],
+  'ü': ['u', 'i', 'üe', 'ün'],
+  'ai': ['ao', 'ei', 'an'],
+  'ei': ['ai', 'ie', 'ui', 'en'],
+  'ui': ['iu', 'ei', 'un', 'u'],
+  'ao': ['ai', 'ou', 'o'],
+  'ou': ['ao', 'o', 'iu'],
+  'iu': ['ui', 'ou', 'ie', 'ü'],
+  'ie': ['ei', 'üe', 'i', 'iu'],
+  'üe': ['ie', 'ü', 'ün'],
+  'er': ['e', 'ei', 'an'],
+  'an': ['ang', 'ai', 'en'],
+  'en': ['eng', 'an', 'ei', 'er'],
+  'in': ['ing', 'i', 'ün'],
+  'un': ['ün', 'ui', 'ong', 'u'],
+  'ün': ['un', 'in', 'ü'],
+  'ang': ['ong', 'an', 'eng'],
+  'eng': ['en', 'ang', 'ing', 'ong'],
+  'ing': ['in', 'eng', 'i'],
+  'ong': ['ang', 'eng', 'un']
+};
+function pickConfusableFinals(targets, need, pool) {
+  const used = new Set(targets);
+  const out = [];
+  const add = c => {
+    if (out.length < need && c && pool.includes(c) && !used.has(c)) {
+      out.push(c); used.add(c);
+    }
+  };
+  // 每个目标（三拼的介母 / 韵母）先各取一个最易混项
+  targets.forEach(t => add((YM_CONFUSE[t] || [])[0]));
+  // 还不够时，继续从易混表里补，最后才随机补齐
+  for (const t of targets) for (const c of (YM_CONFUSE[t] || [])) add(c);
+  while (out.length < need) add(pool[rnd(0, pool.length - 1)]);
+  return out;
+}
+
 function toneFinal(ym, tone) {
   let i = -1;
   for (const v of ['a', 'o', 'e']) { i = ym.indexOf(v); if (i >= 0) break; }
@@ -805,7 +849,7 @@ const CHARS = [
   ['迎','yíng','y','ing',2],
   ['龟','guī','g','ui',1],
   ['鼓','gǔ','g','u',3],
-  ['晒','shài','sh','ai',4],
+  ['荒','huāng','h','uang',1],
   ['溪','xī','x','i',1],
   ['洋','yáng','y','ang',2],
   ['松','sōng','s','ong',1],
@@ -943,9 +987,9 @@ function newPinyinBlendQuestion(progress = STEPS - 1) {
   const pickN = (arr, n) => { const out = []; while (out.length < n) { const v = arr[rnd(0, arr.length - 1)]; if (!out.includes(v)) out.push(v); } return out; };
   const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
   const ymParts = YM_PARTS[t.ym] || null;             // 三拼音节：介母 + 韵母
-  const ymOpts = ymParts
-    ? shuffle([...ymParts, ...pickN(ymPool.filter(y => !ymParts.includes(y)), 2)])
-    : shuffle([t.ym, ...pickN(ymPool.filter(y => y !== t.ym), 3)]);
+  // 干扰项优先选易混韵母：如 u/ang 配 ü/ong，ai 配 ao、ei、an，而不是完全随机。
+  const targets = ymParts || [t.ym];
+  const ymOpts = shuffle([...targets, ...pickConfusableFinals(targets, 4 - targets.length, ymPool)]);
   return { kind: 'pyblend', top: null, parts: [null, null], flip: false,
            char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, ymParts, tone: t.t,
            smOpts: shuffle([t.sm, ...pickN(smPool, 3)]),
@@ -1535,7 +1579,7 @@ document.getElementById('btnRule').onclick = () => {
   const rules = SUBJECT === 'pinyin' ? [
     `当前为${modeText} · 拼音练习，3 个小组轮流在同一台手机/平板上答题。`,
     MODE === 'pyblend'
-      ? '「拼音 · 拼写练习」：上方默认只显示汉字，点击可听读音；在下方选出正确的 声母、韵母 和 声调。点小眼睛可显示或隐藏拼音。'
+      ? '「拼音 · 拼写练习」：上方默认只显示汉字，点击可听读音；在下方选出正确的 声母、韵母 和 声调。韵母选项会加入 ü/ong、ai/ao 等易混项。点小眼睛可显示或隐藏拼音。'
       : '题目给出 声母 + 韵母 + 声调，在下方 4 个汉字中选出对应的字。',
     '声母、韵母、声调卡片和选项都能点击听发音，「拼一拼」可听整字读音。',
     '答对 → 小动物前进一格并读出该字；先前进 10 格的小组获胜。',
