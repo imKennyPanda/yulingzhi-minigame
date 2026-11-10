@@ -1320,12 +1320,12 @@ function pinyinDiagram(q, pick) {
 function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const slot = (val, filled, label, attrs = '') =>
     `<div class="pyb-slot${filled ? ' filled' : ''}${attrs ? ' clickable' : ''}"${attrs}><b>${val || '?'}</b><span>${label}</span></div>`;
-  // 韵母槽与“③ 选声调”保持一致：声调选对了才显示“韵母+声调”
+  // 韵母槽：只有“③ 选声调”里选中正确的带调韵母（韵母和声调都对）才显示
   const curSm = pickSm || q.sm;
   const curYm = pickYm || q.ym;
   const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
     ? 'u' + curYm.slice(1) : curYm;
-  const toneCorrect = pickTone !== null && pickTone === q.tone;
+  const toneCorrect = pickYm === q.ym && pickTone !== null && pickTone === q.tone;
   const toneText = toneCorrect ? toneFinal(toneYm, pickTone) : '';
   // 读音提示与“③ 选声调”完全一致，录音缺失时才用语音兜底
   const toneSay = toneCorrect
