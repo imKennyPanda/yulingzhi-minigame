@@ -1327,22 +1327,24 @@ function pinyinDiagram(q, pick) {
     ${pick !== null ? `<div style="font-size:12px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
   </div>`;
 }
-/* 拼音-分与合题图：上=汉字（拼音默认隐藏，点小眼睛显示）+ 点读；下=声母、韵母、声调 三个空槽 */
+/* 拼音-分与合题图：上=汉字（拼音默认隐藏，点小眼睛显示）+ 点读；下=声母、韵母、完整拼音 三个槽 */
 function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const slot = (val, filled, label, attrs = '') =>
     `<div class="pyb-slot${filled ? ' filled' : ''}${attrs ? ' clickable' : ''}"${attrs}><b>${val || '?'}</b><span>${label}</span></div>`;
-  // 声调槽与“③ 选声调”选项保持一致：显示“韵母+声调”，而不只是声调符号
+  // 韵母槽与“③ 选声调”保持一致：声调选对了才显示“韵母+声调”
   const curSm = pickSm || q.sm;
   const curYm = pickYm || q.ym;
   const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
     ? 'u' + curYm.slice(1) : curYm;
-  const toneText = pickTone ? toneFinal(toneYm, pickTone) : '';
+  const toneCorrect = pickTone !== null && pickTone === q.tone;
+  const toneText = toneCorrect ? toneFinal(toneYm, pickTone) : '';
   // 读音提示与“③ 选声调”完全一致，录音缺失时才用语音兜底
-  const toneSay = pickTone
+  const toneSay = toneCorrect
     ? ((YM_TONE_SAY[curYm] && YM_TONE_SAY[curYm][pickTone - 1]) || TONE_NAME[pickTone])
     : '';
-  // 声母 + 带调韵母 = 拼出的完整拼音（显示孩子当前的选择，不提前泄露答案）
-  const fullPinyin = (pickSm && pickTone) ? pickSm + toneText : '';
+  // 声母、韵母、声调全部选对，才显示这个字的完整拼音
+  const allCorrect = pickSm === q.sm && pickYm === q.ym && pickTone === q.tone;
+  const fullPinyin = allCorrect ? q.pinyin : '';
   // 睁眼=拼音隐藏中（点一下显示）；闭眼=拼音显示中（点一下隐藏）
   const eyeSvg = show => show
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
@@ -1359,9 +1361,9 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
       <path class="link" d="M150 0 L46 24"/><path class="link" d="M150 0 L150 24"/><path class="link" d="M150 0 L254 24"/>
     </svg>
     <div class="pyb-row">
-      ${slot(pickSm, !!pickSm, '声母')}
-      ${slot(toneText, !!pickTone, '韵母', pickTone ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
-      ${slot(fullPinyin, !!(pickSm && pickTone), '完整拼音')}
+      ${slot(pickSm, !!pickSm, '声母', pickSm ? ` data-say="${SM_SAY[pickSm] || pickSm}" data-kind="sm" data-key="${pickSm}"` : '')}
+      ${slot(toneText, toneCorrect, '韵母', toneCorrect ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
+      ${slot(fullPinyin, allCorrect, '完整拼音', allCorrect ? ` data-say="${q.char}" data-kind="char" data-key="${q.pinyin}"` : '')}
     </div>
   </div>`;
 }
