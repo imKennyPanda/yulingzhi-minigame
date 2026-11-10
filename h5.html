@@ -100,8 +100,9 @@
   }
   .st-score small { font-size: 11px; opacity: .85; }
 
-  .qbox { display: flex; justify-content: center; align-items: center; margin: 8px 0 6px; min-height: 130px; }
+  .qbox { position: relative; display: flex; justify-content: center; align-items: center; margin: 8px 0 6px; min-height: 130px; padding-bottom: 34px; }
   .qbox svg { width: 100%; max-width: 340px; height: auto; }
+  .diagram-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
   .numbox { fill: #fff; stroke: #DCCFE8; stroke-width: 3; }
   .numbox.blank { stroke: #FF85BD; stroke-width: 3.5; stroke-dasharray: 8 6; fill: #FFF7FB; }
   .numbox.filled { stroke: #FF85BD; stroke-width: 3.5; fill: #FFEFF7; }
@@ -109,9 +110,16 @@
   .ntext.ans { fill: #FF6FAE; }
   .ntext.q { fill: #FFA8D2; font-size: 32px; }
   .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
-  .flip-toggle { cursor: pointer; }
-  .flip-toggle:hover rect { fill: #FFE7C2; }
-  .flip-toggle:active { opacity: .7; }
+  .flip-toggle.flip-btn {
+    position: absolute; right: 0; bottom: -34px; display: inline-flex; align-items: center; gap: 5px;
+    height: 32px; padding: 0 10px 0 13px; border-radius: 16px; border: 2px solid #FFD9A8;
+    background: #FFF6E6; color: #C77A00; font: inherit; font-size: 15px; font-weight: 800; line-height: 1;
+    cursor: pointer; box-shadow: 0 2px 6px rgba(199,122,0,.14);
+  }
+  .flip-toggle.flip-btn:hover { background: #FFE7C2; }
+  .flip-toggle.flip-btn:active { transform: scale(.96); }
+  .flip-toggle.flip-btn:disabled { opacity: .45; cursor: default; transform: none; }
+  .qbox .flip-btn svg { width: 16px; height: 16px; max-width: none; flex: none; display: block; }
 
   /* 拼音题图（听音辨字） */
   .py-wrap { display: flex; flex-direction: column; align-items: center; gap: 9px; width: 100%; }
@@ -786,7 +794,7 @@ GROUPS.forEach((g, i) => {
     if (flipBtn) {                                 // 点方向标签：上下翻转题图
       if (g.done || g.lock || finished || g.q.kind) return;
       g.q.flip = !g.q.flip;
-      g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
+      g.qEl.innerHTML = diagramHTML(g);
       return;
     }
     const eye = e.target.closest('.pyb-eye');
@@ -908,7 +916,7 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </div>
   </div>`;
 }
-function diagram(q, pick, pickSm, pickYm, pickTone, showPy, withFlip = true) {
+function diagram(q, pick, pickSm, pickYm, pickTone, showPy) {
   if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy);
   if (q.kind === 'py') return pinyinDiagram(q, pick);
   const box = (x, y, val, isBlank) => {
@@ -928,17 +936,15 @@ function diagram(q, pick, pickSm, pickYm, pickTone, showPy, withFlip = true) {
   const botRow  = q.flip
     ? box(110, 108, q.top, q.top === null)
     : box(40, 108, q.parts[0], q.parts[0] === null) + box(180, 108, q.parts[1], q.parts[1] === null);
-  // 右侧小按钮显示当前状态（分/合），带上下箭头图标提示可点击翻转
-  const flipBtn = withFlip ? `<g class="flip-toggle" role="button" aria-label="点击上下翻转">
-    <title>点击上下翻转</title>
-    <rect x="202" y="164" width="86" height="28" rx="14" fill="#FFF6E6" stroke="#FFD9A8" stroke-width="2"/>
-    <text x="230" y="184" text-anchor="middle" font-size="18" fill="#C77A00" font-weight="800">${q.flip ? '分' : '合'}</text>
-    <g fill="none" stroke="#C77A00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M260 182 V172 M256 176 L260 172 L264 176"/>
-      <path d="M272 174 V184 M268 180 L272 184 L276 180"/>
-    </g>
-  </g>` : '';
-  return `<svg viewBox="0 0 300 ${withFlip ? 202 : 176}">${links}${topRow}${botRow}${flipBtn}</svg>`;
+  return `<svg viewBox="0 0 300 176">${links}${topRow}${botRow}</svg>`;
+}
+/* 分与合翻转按钮：显示当前状态（分/合），图标与记分卡右对齐 */
+const FLIP_ICON = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M970.374065 454.543641H51.072319c-28.089776 0-51.072319 22.982544-51.072319 51.072319v2.553616c0 28.089776 22.982544 51.072319 51.072319 51.072319h919.301746c28.089776 0 51.072319-22.982544 51.072319-51.072319v-2.553616c0-28.089776-22.982544-51.072319-51.072319-51.072319zM303.880299 326.862843l199.182045-201.735661 181.306733 183.860349c20.428928 20.428928 51.072319 20.428928 71.501247 0 20.428928-20.428928 20.428928-53.625935 0-74.054863L538.812968 15.321696c-20.428928-20.428928-51.072319-20.428928-71.501247 0-5.107232 5.107232-5.107232 7.660848-7.660848 12.76808-2.553616 2.553616-7.660848 5.107232-10.214464 7.660847L232.379052 255.361596c-20.428928 20.428928-20.428928 53.625935 0 74.054863 20.428928 17.875312 51.072319 17.875312 71.501247-2.553616zM702.244389 720.119701l-183.860349 181.306733-201.735661-199.182045c-20.428928-20.428928-53.625935-20.428928-74.054863 0-20.428928 20.428928-20.428928 51.072319 0 51.072319l219.610973 217.057357c2.553616 2.553616 7.660848 5.107232 10.214464 7.660847 2.553616 2.553616 5.107232 7.660848 7.660847 10.214464 20.428928 20.428928 53.625935 20.428928 74.054863 0l219.610973-217.057356c20.428928-20.428928 20.428928-51.072319 0-71.501247-17.875312-20.428928-51.072319-20.428928-71.501247 0z"/></svg>`;
+function diagramHTML(g) {
+  const svg = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
+  if (g.q.kind) return svg;
+  const dis = (g.done || g.lock || finished) ? ' disabled' : '';
+  return `<div class="diagram-wrap">${svg}<button type="button" class="flip-toggle flip-btn" aria-label="点击上下翻转" title="点击上下翻转"${dis}><span>${g.q.flip ? '分' : '合'}</span>${FLIP_ICON}</button></div>`;
 }
 
 /* ---------------- 键盘 ---------------- */
@@ -1011,7 +1017,7 @@ function renderPad(g) {
   }
 }
 function render(g) {
-  g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
+  g.qEl.innerHTML = diagramHTML(g);
   renderPad(g);
   g.okEl.disabled = g.q.kind === 'pyblend' ? !(g.pickSm && g.pickYm && g.pickTone) : g.pick === null;
   if (g.helpEl) {
@@ -1370,7 +1376,7 @@ function renderHelp() {
   helpBody.innerHTML = `<div class="help-main">
     <div class="help-question">
       <div class="help-question-label">原题</div>
-      <div class="help-question-img">${diagram(q, null, null, null, null, false, false)}</div>
+      <div class="help-question-img">${diagram(q, null, null, null, null, false)}</div>
     </div>
     <div class="help-panel">
       <div class="help-top">${topZone}</div>
