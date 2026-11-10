@@ -170,7 +170,7 @@
   .ntext.q { fill: #FFA8D2; font-size: 32px; }
   .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
   .flip-toggle.flip-btn {
-    position: absolute; right: 0; bottom: 10px; display: inline-flex; align-items: center; gap: 7px;
+    position: absolute; right: 0; bottom: 4px; display: inline-flex; align-items: center; gap: 7px;
     height: 42px; padding: 0 14px 0 18px; border-radius: 21px; border: 2.5px solid #FFD9A8;
     background: #FFF6E6; color: #C77A00; font: inherit; font-size: 20px; font-weight: 800; line-height: 1;
     cursor: pointer; box-shadow: 0 4px 10px rgba(199,122,0,.17);
@@ -313,8 +313,8 @@
   .help-carrot { position: relative; width: 75px; height: 94px; cursor: grab; touch-action: none; user-select: none; flex: none; }
   .help-carrot svg { width: 100%; height: 100%; display: block; pointer-events: none; }
   .help-carrot-num {
-    position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%);
-    font-size: 26px; font-weight: 900; color: #fff; line-height: 1;
+    position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%);
+    font-size: 24px; font-weight: 900; color: #fff; line-height: 1;
     text-shadow: 0 2px 3px rgba(120,30,10,.55); pointer-events: none;
   }
   .help-carrot.dragging { opacity: .3; }
@@ -1914,7 +1914,7 @@ const HELP_SIDE = ['left', 'right'];
 let helpGroup = null;
 let helpState = { top: 0, left: 0, right: 0 };
 let helpDrag = null;
-let helpMoved = false;                 // 挪动过红萝卜后，萝卜中间显示序号
+let helpMoved = false;                 // 挪动过红萝卜后，只在待解答区域显示序号
 
 function helpModeOf(q) { return q.top !== null ? 'fen' : 'he'; }
 function helpOpenState(g) {
@@ -1934,9 +1934,19 @@ function helpSolved() {
   }
   return helpState.left === 0 && helpState.right === 0 && helpState.top === q.answer;
 }
+// 需要孩子自己数出答案的区域：合→分是“?”罐子，分→合是上面的“一共有几个？”
+function helpAnswerZone(q) {
+  if (!q || q.kind) return null;
+  if (q.top !== null) {
+    const knownIdx = q.parts[0] === null ? 1 : 0;
+    return HELP_SIDE[1 - knownIdx];
+  }
+  return 'top';
+}
 function carrotHTML(n, zone) {
+  const numbered = helpMoved && zone === helpAnswerZone(helpGroup && helpGroup.q);
   return Array.from({ length: n }, (_, i) =>
-    `<div class="help-carrot" data-zone="${zone}">${CARROT_SVG}${helpMoved ? `<span class="help-carrot-num">${i + 1}</span>` : ''}</div>`
+    `<div class="help-carrot" data-zone="${zone}">${CARROT_SVG}${numbered ? `<span class="help-carrot-num">${i + 1}</span>` : ''}</div>`
   ).join('');
 }
 function renderHelp() {
@@ -1948,7 +1958,7 @@ function renderHelp() {
   const knownSide = HELP_SIDE[knownIdx];
   const otherSide = HELP_SIDE[1 - knownIdx];
   const sideName = s => s === 'left' ? '左边' : '右边';
-  // 问号格只显示 ?，哪怕拖入萝卜也不显示数字，让小朋友自己数
+  // 问号格的大数字始终显示 ?，拖入萝卜也不改成答案，让小朋友自己数
   const zone = (key, big, label, cls) => `
     <div class="help-zone ${cls || ''}" data-zone="${key}">
       <div class="help-zone-head"><b>${big}</b><span>${label}</span></div>
@@ -2005,8 +2015,7 @@ function helpPointerDown(e) {
   e.preventDefault();
   const ghost = document.createElement('div');
   ghost.className = 'help-carrot-ghost';
-  const idx = Array.from(c.parentNode.children).indexOf(c) + 1;
-  ghost.innerHTML = CARROT_SVG + (helpMoved ? `<span class="help-carrot-num">${idx}</span>` : '');
+  ghost.innerHTML = CARROT_SVG;
   board.appendChild(ghost);
   helpDrag = { zone, ghost, src: c };
   c.classList.add('dragging');
@@ -2038,7 +2047,7 @@ function helpPointerUp(e) {
   if (to === drag.zone || !helpState[drag.zone]) { renderHelp(); return; }
   helpState[drag.zone]--;
   helpState[to]++;
-  helpMoved = true;                    // 第一次挪动后，萝卜中间显示数字方便清点
+  helpMoved = true;                    // 第一次挪动后，只在待解答区域显示数字方便清点
   if (helpSolved()) beep(true);
   renderHelp();
 }
