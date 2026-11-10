@@ -131,6 +131,11 @@
   .py-box:hover { background: #FFEFF7; }
   .py-box b { display: block; font-size: 30px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
   .py-box span { display: block; font-size: 11px; color: #B07A9E; font-weight: 700; margin-top: 1px; }
+  /* 三拼音节多一个韵母按钮（声母 + 介母 + 韵母 + 声调），缩小一点排成一行 */
+  .py-row.split { gap: 8px; }
+  .py-row.split .py-box { min-width: 62px; padding: 8px 8px; }
+  .py-row.split .py-box b { font-size: 26px; }
+  .py-row.split .py-box span { font-size: 9.5px; line-height: 1.2; }
   .py-blend {
     border: none; border-radius: 999px; background: linear-gradient(135deg,#FFB0D4,#FF6FAE);
     color: #fff; font-size: 13.5px; font-weight: 800; padding: 8px 20px; cursor: pointer; font-family: inherit;
@@ -666,10 +671,11 @@ function playPinyinSound(kind, key, fallback) {
   playAudioFile(`audio/${kind}/${name}.mp3`, fallback);
 }
 /* 声调卡读“韵母 + 声调”的纯韵母录音，例如 un 的第一声读 wēn，而不是“村”。
-   ong 没有零声母音节，ong1/3/4 用纯韵母录音，ong2 暂用 tong2 保留正确声调。 */
+   ong 没有零声母音节，ong1/3/4 用纯韵母录音；ong2 由 tong2 裁掉声母 t 后得到纯 óng。 */
 function playToneSound(ym, tone, fallback) {
   const name = YM_AUDIO_NAME[ym] || ym;
-  playAudioFile(`audio/tone/${name}${tone}.mp3`, fallback);
+  const file = (name === 'ong' && tone === 2) ? 'ong2-pure' : `${name}${tone}`;
+  playAudioFile(`audio/tone/${file}.mp3`, fallback);
 }
 
 /* ---------------- 出题 ---------------- */
@@ -898,15 +904,22 @@ function syncStations() {
 
 /* ---------------- 题图 ---------------- */
 function pinyinDiagram(q, pick) {
-  const toneSay = (YM_TONE_SAY[q.ym] && YM_TONE_SAY[q.ym][q.tone - 1]) || TONE_NAME[q.tone];
-  // 声调按钮显示“韵母+声调”（如 uà），不只显示 ˋ，帮助孩子把声调记在韵母上
-  const toneYm = (q.ym[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(q.sm))
-    ? 'u' + q.ym.slice(1) : q.ym;
+  // 三拼音节（如 huo、tian、niao）不存在 uo、ian 这种整体韵母：
+  // 拆成“介母 + 韵母”两个韵母按钮，声调只标在承担声调的那个韵母上。
+  const parts = YM_PARTS[q.ym] || null;
+  const toneBase = parts ? parts[parts.length - 1] : q.ym;
+  const toneSay = (YM_TONE_SAY[toneBase] && YM_TONE_SAY[toneBase][q.tone - 1]) || TONE_NAME[q.tone];
+  // 声调按钮显示“韵母+声调”（如 uà、ǒ），不只显示 ˋ，帮助孩子把声调记在韵母上
+  const toneYm = (toneBase[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(q.sm))
+    ? 'u' + toneBase.slice(1) : toneBase;
+  const ymBoxes = parts
+    ? parts.map(p => `<div class="py-box" data-say="${YM_SAY[p] || p}" data-kind="ym" data-key="${p}"><b>${p}</b><span>韵母 · 点击听</span></div>`).join('')
+    : `<div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>`;
   return `<div class="py-wrap">
-    <div class="py-row">
+    <div class="py-row${parts ? ' split' : ''}">
       <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}" data-kind="sm" data-key="${q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
-      <div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>
-      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>${TONE_NAME[q.tone]}</span></div>
+      ${ymBoxes}
+      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${toneBase}"><b>${toneFinal(toneYm, q.tone)}</b><span>${TONE_NAME[q.tone]}</span></div>
     </div>
     <button type="button" class="py-blend" data-say="${q.char}">🔊 拼一拼 · 听整字</button>
     ${pick !== null ? `<div style="font-size:12px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}

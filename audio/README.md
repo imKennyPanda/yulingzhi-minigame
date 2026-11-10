@@ -14,8 +14,8 @@ H5 / PC 共用的拼音标准发音文件。页面通过 `audio/sm/*.mp3`、`aud
 - 组合韵母 ua、uo、ian、iao、uan、iang、uang：来自 [davinfifield/mp3-chinese-pinyin-sound](https://github.com/davinfifield/mp3-chinese-pinyin-sound)，Unlicense（公有领域）；使用零声母音节 wa / wo / yan / yao / wan / yang / wang 的第一声录音。
 - `tone/` 中 30 个韵母的四声：来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio)（仓库 README 注明音频供教育及非商业用途使用），使用其中的零声母音节录音，例如 un 用 wen1–wen4、ui 用 wei1–wei4、ü 用 yu1–yu4。
 - `tone/ong1.mp3`、`tone/ong3.mp3`、`tone/ong4.mp3`：来自 [vibrantbyte/resources](https://gitee.com/vibrantbyte/resources) 的韵母四声录音，仓库为 Apache-2.0 License。ong 没有零声母音节，因此直接使用韵母录音。
-- `tone/ong2.mp3`：上述韵母录音缺少 ong 的第二声，暂用 hanziguru 的 `tong2`（同，tóng），保留 ong 韵母和正确声调。
-- 音频文件仅重命名和整理，未修改音频内容。
+- `tone/ong2-pure.mp3`：上述韵母录音缺少 ong 的第二声，改用 hanziguru 的 `tong2`（同，tóng），裁掉开头的声母 t（保留 0.285–0.68 秒的纯韵母部分），并把响度调整到与其他 ong 录音一致。
+- 除 `ong2-pure.mp3` 外，音频文件仅重命名和整理，未修改音频内容；`ong2-pure.mp3` 做了去声母裁剪和响度匹配。
 
 ## 许可文本
 
