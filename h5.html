@@ -249,8 +249,9 @@
   .help-question-img svg { width: 100%; height: auto; display: block; }
   .help-question-img .flip-toggle { pointer-events: none; cursor: default; }
   .help-panel { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
-  .help-top { margin-bottom: 8px; }
-  .help-top .help-zone { min-height: 94px; }
+  .help-total .help-zone { min-height: 94px; }
+  .help-total.before { margin-bottom: 8px; }
+  .help-total.after { margin-top: 8px; }
   .help-jars { display: flex; gap: 8px; flex: 1; }
   .help-jars .help-zone { flex: 1; min-height: 146px; }
   .help-zone {
@@ -1373,20 +1374,23 @@ function renderHelp() {
     leftZone = zone('left', helpState.left, '左边罐子');
     rightZone = zone('right', helpState.right, '右边罐子');
   }
+  // 右侧操作区跟随题图方向：分→合时两个罐子在上、总数在下；合→分时总数在上
+  const jarsRow = `<div class="help-jars">${leftZone}${rightZone}</div>`;
+  const totalRow = `<div class="help-total ${q.flip ? 'after' : 'before'}">${topZone}</div>`;
   helpBody.innerHTML = `<div class="help-main">
     <div class="help-question">
       <div class="help-question-label">原题</div>
       <div class="help-question-img">${diagram(q, null, null, null, null, false)}</div>
     </div>
     <div class="help-panel">
-      <div class="help-top">${topZone}</div>
-      <div class="help-jars">${leftZone}${rightZone}</div>
+      ${q.flip ? jarsRow + totalRow : totalRow + jarsRow}
     </div>
   </div>`;
   if (helpSolved()) helpBody.querySelectorAll('.help-zone').forEach(z => z.classList.add('solved'));
+  const totalPos = q.flip ? '下面' : '上面';
   helpTipEl.textContent = mode === 'fen'
-    ? `把上面的 ${q.top} 个红萝卜拖进罐子：${sideName(knownSide)}放 ${knownVal} 个，${sideName(otherSide)}放剩下的。`
-    : '把两个罐子里的红萝卜都拖到上面，数一数一共几个。';
+    ? `把${totalPos}的 ${q.top} 个红萝卜拖进罐子：${sideName(knownSide)}放 ${knownVal} 个，${sideName(otherSide)}放剩下的。`
+    : `把两个罐子里的红萝卜都拖到${totalPos}，数一数一共几个。`;
 }
 function helpZoneAt(x, y) {
   const el = document.elementFromPoint(x, y);
