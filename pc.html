@@ -344,11 +344,17 @@
   .py-box b { display: block; font-size: 32px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
   .py-box span { display: block; font-size: 12px; color: #B07A9E; font-weight: 700; margin-top: 1px; }
   .py-box.py-whole { width: auto; min-width: 160px; padding-left: 24px; padding-right: 24px; }
-  /* 三拼音节多一个韵母按钮（声母 + 介母 + 韵母 + 声调），缩小一点排成一行 */
+  /* 完整拼音按钮（原“声调”位置）：宽度随拼音长度自适应 */
+  .py-box.py-full { width: auto; min-width: 88px; padding-left: 6px; padding-right: 6px; }
+  /* 带调韵母按钮（原“声调”内容）：宽度随韵母长度自适应 */
+  .py-box.py-tone { width: auto; min-width: 88px; padding-left: 4px; padding-right: 4px; }
+  /* 三拼音节多一个介母按钮（声母 + 介母 + 带调韵母 + 完整拼音），缩小一点排成一行 */
   .py-row.split { gap: 14px; }
   .py-row.split .py-box { width: 78px; padding: 8px 0 6px; }
   .py-row.split .py-box b { font-size: 30px; }
   .py-row.split .py-box span { font-size: 10.5px; }
+  .py-row.split .py-box.py-full { width: auto; min-width: 78px; padding-left: 6px; padding-right: 6px; }
+  .py-row.split .py-box.py-tone { width: auto; min-width: 78px; padding-left: 4px; padding-right: 4px; }
   .py-blend {
     border: none; border-radius: 999px; background: linear-gradient(135deg, #FFB0D4, #FF6FAE);
     color: #fff; font-size: 14px; font-weight: 800; padding: 7px 20px; cursor: pointer; font-family: inherit;
@@ -1319,21 +1325,26 @@ function pinyinDiagram(q, pick) {
     </div>`;
   }
   // 三拼音节（如 huo、tian、niao）不存在 uo、ian 这种整体韵母：
-  // 韵母按钮仍拆成“介母 + 韵母”两部分；声调按钮再把它们组合起来，
-  // 显示并播放完整韵母的声调读音（如 iao → iǎo、uo → uǒ）。
+  // 介母仍单独显示；最后一个韵母按钮显示并播放完整韵母的带调读音
+  // （如 iao → iǎo、uo → uǒ），与原来的“声调”按钮一致。
   const parts = YM_PARTS[q.ym] || null;
   const toneSay = (YM_TONE_SAY[q.ym] && YM_TONE_SAY[q.ym][q.tone - 1]) || TONE_NAME[q.tone];
-  // 声调按钮显示“完整韵母+声调”（如 uà、iǎo），不只显示 ˋ，帮助孩子把声调记在韵母上
   const toneYm = (q.ym[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(q.sm))
     ? 'u' + q.ym.slice(1) : q.ym;
+  // “韵母”按钮：声音和拼音与原来的“声调”按钮一致（带调韵母 + 声调录音）
+  const toneBox = `<div class="py-box py-tone" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>韵母 · 点击听</span></div>`;
+  // 原来的“声调”按钮：改成这个字的完整拼音，点击读整字
+  const fullBox = `<div class="py-box py-full" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}"><b>${q.pinyin}</b><span>完整拼音 · 点击听</span></div>`;
+  // 三拼音节保留介母按钮，最后的韵母按钮并入上面的带调韵母
   const ymBoxes = parts
-    ? parts.map(p => `<div class="py-box" data-say="${YM_SAY[p] || p}" data-kind="ym" data-key="${p}"><b>${p}</b><span>韵母 · 点击听</span></div>`).join('')
-    : `<div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>`;
+    ? parts.slice(0, -1).map(p => `<div class="py-box" data-say="${YM_SAY[p] || p}" data-kind="ym" data-key="${p}"><b>${p}</b><span>韵母 · 点击听</span></div>`).join('')
+    : '';
   return `<div class="py-wrap">
     <div class="py-row${parts ? ' split' : ''}">
       <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}" data-kind="sm" data-key="${q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
       ${ymBoxes}
-      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>${TONE_NAME[q.tone]}</span></div>
+      ${toneBox}
+      ${fullBox}
     </div>
     <button type="button" class="py-blend" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}">🔊 拼一拼 · 听整字</button>
     ${pick !== null ? `<div style="font-size:13px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
