@@ -899,11 +899,14 @@ function syncStations() {
 /* ---------------- 题图 ---------------- */
 function pinyinDiagram(q, pick) {
   const toneSay = (YM_TONE_SAY[q.ym] && YM_TONE_SAY[q.ym][q.tone - 1]) || TONE_NAME[q.tone];
+  // 声调按钮显示“韵母+声调”（如 uà），不只显示 ˋ，帮助孩子把声调记在韵母上
+  const toneYm = (q.ym[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(q.sm))
+    ? 'u' + q.ym.slice(1) : q.ym;
   return `<div class="py-wrap">
     <div class="py-row">
       <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}" data-kind="sm" data-key="${q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
       <div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>
-      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${TONE_MARK[q.tone]}</b><span>${TONE_NAME[q.tone]}</span></div>
+      <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>${TONE_NAME[q.tone]}</span></div>
     </div>
     <button type="button" class="py-blend" data-say="${q.char}">🔊 拼一拼 · 听整字</button>
     ${pick !== null ? `<div style="font-size:12px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
