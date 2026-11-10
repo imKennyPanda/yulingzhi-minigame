@@ -383,6 +383,8 @@
     background: #FFF7FB; border: 2.5px dashed #FF85BD;
   }
   .pyb-slot.filled { border-style: solid; background: #FFEFF7; }
+  .pyb-slot.clickable { cursor: pointer; }
+  .pyb-slot.clickable:active { transform: scale(.95); }
   .pyb-slot b { display: block; font-size: 26px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
   .pyb-slot span { display: block; font-size: 12px; color: #B07A9E; font-weight: 700; }
   .pad-cap { font-size: 12px; font-weight: 700; color: #A090B2; margin: 2px 0 5px 4px; }
@@ -1316,15 +1318,16 @@ function pinyinDiagram(q, pick) {
 }
 /* 拼音-分与合题图：上=汉字（拼音默认隐藏，点小眼睛显示）+ 点读；下=声母、韵母、声调 三个空槽 */
 function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
-  const slot = (val, filled, label) =>
-    `<div class="pyb-slot${filled ? ' filled' : ''}"><b>${val || '?'}</b><span>${label}</span></div>`;
+  const slot = (val, filled, label, attrs = '') =>
+    `<div class="pyb-slot${filled ? ' filled' : ''}${attrs ? ' clickable' : ''}"${attrs}><b>${val || '?'}</b><span>${label}</span></div>`;
   // 声调槽与“③ 选声调”选项保持一致：显示“韵母+声调”，而不只是声调符号
   const curSm = pickSm || q.sm;
   const curYm = pickYm || q.ym;
   const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
     ? 'u' + curYm.slice(1) : curYm;
-  // 三拼音节选完后，韵母槽显示“介母 + 韵母”，不把 ua 当成一个韵母
-  const dispYm = (q.ymParts && pickYm === q.ym) ? q.ymParts.join('+') : pickYm;
+  const toneText = pickTone ? toneFinal(toneYm, pickTone) : '';
+  // 声母 + 带调韵母 = 拼出的完整拼音（显示孩子当前的选择，不提前泄露答案）
+  const fullPinyin = (pickSm && pickTone) ? pickSm + toneText : '';
   // 睁眼=拼音隐藏中（点一下显示）；闭眼=拼音显示中（点一下隐藏）
   const eyeSvg = show => show
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
@@ -1342,8 +1345,8 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </svg>
     <div class="pyb-row">
       ${slot(pickSm, !!pickSm, '声母')}
-      ${slot(dispYm, !!pickYm, '韵母')}
-      ${slot(pickTone ? toneFinal(toneYm, pickTone) : '', !!pickTone, '声调')}
+      ${slot(toneText, !!pickTone, '声调', pickTone ? ` data-say="${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
+      ${slot(fullPinyin, !!(pickSm && pickTone), '完整拼音')}
     </div>
   </div>`;
 }
