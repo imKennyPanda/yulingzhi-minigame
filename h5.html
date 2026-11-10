@@ -131,6 +131,7 @@
   .py-box:hover { background: #FFEFF7; }
   .py-box b { display: block; font-size: 30px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
   .py-box span { display: block; font-size: 11px; color: #B07A9E; font-weight: 700; margin-top: 1px; }
+  .py-box.py-whole { min-width: 140px; padding-left: 20px; padding-right: 20px; }
   /* 三拼音节多一个韵母按钮（声母 + 介母 + 韵母 + 声调），缩小一点排成一行 */
   .py-row.split { gap: 8px; }
   .py-row.split .py-box { min-width: 62px; padding: 8px 8px; }
@@ -1053,6 +1054,19 @@ function charAudioName(pinyin) {
 function playCharSound(pinyin, fallback) {
   playAudioFile(`audio/char/${charAudioName(pinyin)}.mp3`, fallback);
 }
+/* 16 个整体认读音节：不拆声母、韵母，直接按完整带调拼音读。 */
+const WHOLE_SYLLABLES = new Set([
+  'zhi', 'chi', 'shi', 'ri', 'zi', 'ci', 'si',
+  'yi', 'wu', 'yu', 'ye', 'yue', 'yuan', 'yin', 'yun', 'ying'
+]);
+function pinyinBase(pinyin) {
+  let out = '';
+  for (const ch of pinyin) {
+    const mark = CHAR_TONE_MARK[ch];
+    out += mark ? mark[0] : ch;
+  }
+  return out;
+}
 
 /* ---------------- 出题 ---------------- */
 /* 闯关拼音难度阶梯：前 50% 进度保持基础难度，不随每次答对提升；
@@ -1306,6 +1320,15 @@ function syncStations() {
 
 /* ---------------- 题图 ---------------- */
 function pinyinDiagram(q, pick) {
+  // 整体认读音节不拆声母、韵母、声调，只显示一个完整拼音按钮并可点读
+  if (WHOLE_SYLLABLES.has(pinyinBase(q.pinyin))) {
+    return `<div class="py-wrap">
+      <div class="py-row">
+        <div class="py-box py-whole" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}"><b>${q.pinyin}</b><span>整体认读 · 点击听</span></div>
+      </div>
+      ${pick !== null ? `<div style="font-size:12px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
+    </div>`;
+  }
   // 三拼音节（如 huo、tian、niao）不存在 uo、ian 这种整体韵母：
   // 韵母按钮仍拆成“介母 + 韵母”两部分；声调按钮再把它们组合起来，
   // 显示并播放完整韵母的声调读音（如 iao → iǎo、uo → uǒ）。
