@@ -1177,6 +1177,28 @@ function playToneSound(ym, tone, fallback) {
   const file = (name === 'ong' && tone === 2) ? 'ong2-pure' : `${name}${tone}`;
   playAudioFile(`audio/tone/${file}.mp3`, fallback);
 }
+/* 汉字读音改用整音节录音：和声调卡同源同音色，长度也一致。
+   例如 妈 mā -> audio/char/ma1.mp3、女 nǚ -> audio/char/nv3.mp3。 */
+const CHAR_TONE_MARK = {
+  'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+  'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+  'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+  'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+  'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+  'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4'
+};
+function charAudioName(pinyin) {
+  let out = '', tone = '';
+  for (const ch of pinyin) {
+    const mark = CHAR_TONE_MARK[ch];
+    if (mark) { out += mark[0]; tone = mark[1]; }
+    else out += ch === 'ü' ? 'v' : ch;
+  }
+  return out + tone;
+}
+function playCharSound(pinyin, fallback) {
+  playAudioFile(`audio/char/${charAudioName(pinyin)}.mp3`, fallback);
+}
 
 /* ---------------- 出题 ---------------- */
 function newQuestion() {
@@ -1324,6 +1346,7 @@ GROUPS.forEach((g, i) => {
     // 认字练习：声母、韵母、声调也播放标准录音，和拼音表/拼写练习一致
     if (t.dataset.kind === 'sm' || t.dataset.kind === 'ym') playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
     else if (t.dataset.kind === 'tone') playToneSound(t.dataset.ym, +t.dataset.key, t.dataset.say);
+    else if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
     else speak(t.dataset.say);
   });
 });
@@ -1421,7 +1444,7 @@ function pinyinDiagram(q, pick) {
       ${ymBoxes}
       <div class="py-box" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>${TONE_NAME[q.tone]}</span></div>
     </div>
-    <button type="button" class="py-blend" data-say="${q.char}">🔊 拼一拼 · 听整字</button>
+    <button type="button" class="py-blend" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}">🔊 拼一拼 · 听整字</button>
     ${pick !== null ? `<div style="font-size:12px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
   </div>`;
 }
@@ -1441,7 +1464,7 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   return `<div class="pyb-wrap">
-    <div class="pyb-top" data-say="${q.char}">
+    <div class="pyb-top" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}">
       <b class="pyb-py${showPy ? '' : ' is-hidden'}">${q.pinyin}</b><i>${q.char}</i>
       <span class="pyb-side">
         <span>🔊 点击听</span>
@@ -1629,7 +1652,7 @@ function submit(g) {
     : (g.pick === g.q.answer);
   if (ok) {
     beep(true);
-    if (g.q.kind === 'py' || g.q.kind === 'pyblend') speak(g.q.char);
+    if (g.q.kind === 'py' || g.q.kind === 'pyblend') playCharSound(g.q.pinyin, g.q.char);
     g.el.classList.add('right');
     g.progress = Math.min(STEPS, g.progress + 1);
     g.scEl.innerHTML = `${g.progress}<small>/10</small>`;
@@ -2050,10 +2073,10 @@ function buildChart() {
       + arr.map(([y, c]) => card(y, c, c, '', 'ym', y)).join('') + '</div>';
   });
   html += '<h4>四声练习（m + a · 点击听读音）</h4><div class="c-grid">'
-    + [['妈','mā · 第一声'],['麻','má · 第二声'],['马','mǎ · 第三声'],['骂','mà · 第四声']]
-        .map(([c, d]) => card(c, d, c, 'tone')).join('') + '</div>';
+    + [['妈','mā','第一声'],['麻','má','第二声'],['马','mǎ','第三声'],['骂','mà','第四声']]
+        .map(([c, p, d]) => card(c, `${p} · ${d}`, c, 'tone', 'char', p)).join('') + '</div>';
   html += `<h4>常用字点读表（1–3 年级 · ${CHARS.length} 字）</h4><div class="c-grid">`
-    + CHARS.map(x => card(x.c, x.p, x.c, 'zi')).join('') + '</div>';
+    + CHARS.map(x => card(x.c, x.p, x.c, 'zi', 'char', x.p)).join('') + '</div>';
   document.getElementById('chartBody').innerHTML = html;
 }
 buildChart();
@@ -2066,7 +2089,8 @@ document.getElementById('chartFs').onclick = () => {
 maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
   if (!t) return;
-  if (t.dataset.kind) playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
+  if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
+  else if (t.dataset.kind) playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
   else speak(t.dataset.say);
 });
 
