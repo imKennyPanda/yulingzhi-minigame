@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>分与合田径大赛 · 互动课堂游戏</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #2E2440; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #stage { position: relative; }
+  .board {
+    width: 1920px; height: 1080px; position: absolute; top: 0; left: 0;
+    transform-origin: top left; background: #FFFFFF; overflow: hidden;
+    border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.45);
+    display: flex; flex-direction: column; user-select: none;
+  }
+
+  /* ============ 顶栏 ============ */
+  .topbar {
+    height: 66px; flex: none; display: flex; align-items: center; padding: 0 28px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FFF7FC 100%);
+    border-bottom: 2px solid #F3E7F8; position: relative; z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #FFB0D4, #FF6FAE); color: #fff; font-weight: 800; font-size: 17px;
+    box-shadow: 0 4px 10px rgba(255,120,50,.35);
+  }
+  .brand-txt { font-size: 17px; font-weight: 700; color: #3D3350; letter-spacing: .5px; }
+  .tabs { display: flex; gap: 8px; margin-left: 26px; }
+  .tab {
+    padding: 8px 20px; border-radius: 999px; font-size: 16px; font-weight: 600; color: #8A7A9C;
+    background: #F7F0FB; cursor: pointer; border: 2px solid transparent; transition: .15s;
+  }
+  .tab.on { background: #fff; color: #FF6FAE; border-color: #FFC6E2; box-shadow: 0 3px 8px rgba(255,107,53,.16); }
+  .title {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 27px; font-weight: 800; letter-spacing: 3px; color: #3D3350;
+    text-shadow: 0 2px 0 #FFD6EA;
+  }
+  .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .tool {
+    display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; border-radius: 10px;
+    font-size: 15px; font-weight: 600; color: #5B4B6E; background: #F7F0FB; cursor: pointer;
+    border: 1.5px solid #EFE4F6; transition: .15s;
+  }
+  .tool:hover { background: #F3EDFC; color: #8A6BF0; border-color: #DCCBFA; }
+  .tool.warn:hover { background: #FFF0F7; color: #FF6FAE; border-color: #FFC6E2; }
+  .diff { display: flex; background: #F7F0FB; border-radius: 10px; padding: 3px; border: 1.5px solid #EFE4F6; }
+  .diff span { padding: 6px 13px; font-size: 14px; font-weight: 600; color: #8A7A9C; border-radius: 7px; cursor: pointer; }
+  .diff span.on { background: #fff; color: #FF6FAE; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+
+  /* ============ 赛场 ============ */
+  .field {
+    flex: 1; position: relative; padding: 20px 60px 8px;
+    background: linear-gradient(180deg, #DFF4FF 0%, #F1F0FF 62%, #EAFBF4 100%);
+    overflow: hidden;
+  }
+  .sun { position: absolute; top: 14px; right: 46px; width: 78px; height: 78px; border-radius: 50%;
+    background: radial-gradient(circle, #FFE484 40%, #FFD04D 100%); box-shadow: 0 0 40px rgba(255,208,77,.6); }
+  .cloud { position: absolute; background: #fff; border-radius: 999px; opacity: .92; }
+  .c1 { width: 150px; height: 46px; top: 34px; left: 150px; }
+  .c1::before { content: ""; position: absolute; width: 68px; height: 68px; background: #fff; border-radius: 50%; top: -30px; left: 26px; }
+  .c2 { width: 110px; height: 36px; top: 96px; left: 420px; opacity: .75; }
+  .c2::before { content: ""; position: absolute; width: 52px; height: 52px; background: #fff; border-radius: 50%; top: -24px; left: 20px; }
+  .banner {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; padding: 9px 26px; border-radius: 14px;
+    background: linear-gradient(135deg, #FF85BD, #F0509A); color: #fff; font-size: 23px; font-weight: 800;
+    letter-spacing: 2px; box-shadow: 0 8px 18px rgba(255,110,50,.35); border: 3px solid #fff;
+  }
+
+  .lanes {
+    position: absolute; left: 60px; right: 60px; top: 74px; bottom: 46px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .lane {
+    flex: 1; min-height: 0; position: relative; border-radius: 16px; overflow: hidden;
+    background: linear-gradient(180deg, #FFCBE2 0%, #FFB0D4 48%, #F58FC2 100%);
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,.35), 0 6px 14px rgba(180,110,50,.18);
+  }
+  .lane::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.45) 0 4px, transparent 4px 74px);
+  }
+  .lane-tag {
+    position: absolute; left: -2px; top: 50%; transform: translateY(-50%); z-index: 3;
+    width: 56px; height: 56px; border-radius: 13px; display: grid; place-items: center;
+    background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.14); font-size: 12px; font-weight: 800; color: #5B4B6E;
+    line-height: 1.1; text-align: center;
+  }
+  .runner {
+    position: absolute; bottom: 2px; width: 96px; height: calc(100% - 4px); z-index: 4;
+    transition: left .75s cubic-bezier(.34,1.3,.5,1);
+  }
+  .runner svg { width: 100%; height: 100%; overflow: visible; }
+  .runner.run { animation: bob .32s ease 3; }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-16px) rotate(-4deg); } }
+  .plus {
+    position: absolute; z-index: 6; font-size: 34px; font-weight: 900; color: #FFD35C;
+    text-shadow: 0 3px 0 #D8508F, 0 0 14px rgba(255,210,63,.9); pointer-events: none;
+    animation: floatUp 1.1s ease forwards;
+  }
+  @keyframes floatUp { 0% { opacity: 0; transform: translateY(6px) scale(.6); }
+    25% { opacity: 1; transform: translateY(-16px) scale(1.15); }
+    100% { opacity: 0; transform: translateY(-62px) scale(1); } }
+
+  .finish {
+    position: absolute; left: 1485px; top: 0; bottom: 0; width: 30px; z-index: 5;
+    background-image:
+      linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%),
+      linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);
+    background-size: 15px 15px; background-position: 0 0, 15px 15px;
+    background-color: #5B4B6E; border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,.2);
+  }
+  .finish-flag {
+    position: absolute; left: 1485px; top: -40px; width: 30px; height: 44px; z-index: 6;
+    background-image:
+      linear-gradient(45deg, #3D3350 25%, transparent 25%, transparent 75%, #3D3350 75%),
+      linear-gradient(45deg, #3D3350 25%, transparent 25%, transparent 75%, #3D3350 75%);
+    background-size: 15px 15px; background-position: 0 0, 15px 15px; background-color: #fff;
+    border-radius: 4px 4px 0 0;
+  }
+  .ruler { position: absolute; left: 0; right: 0; bottom: -42px; height: 42px; }
+  .tick { position: absolute; top: 0; transform: translateX(-50%); text-align: center; }
+  .tick i { display: block; width: 3px; height: 12px; background: #B4A6C4; border-radius: 2px; margin: 0 auto 3px; }
+  .tick b { font-size: 15px; color: #8A7A9C; font-weight: 700; }
+  .tick.end b { color: #FF6FAE; }
+
+  /* ============ 答题台 ============ */
+  .stations {
+    flex: none; height: 470px; background: linear-gradient(180deg, #FCF7FE, #F9F2FC);
+    padding: 18px 60px 26px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px;
+    border-top: 3px solid #EFE4F6;
+  }
+  .station {
+    background: #fff; border-radius: 22px; padding: 14px 16px 16px; display: flex; flex-direction: column;
+    box-shadow: 0 8px 20px rgba(40,70,110,.10); border: 2.5px solid #F5EAF9; position: relative; overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .station.right { border-color: #45D6A0; box-shadow: 0 8px 22px rgba(76,209,139,.28); }
+  .station.wrong { border-color: #FF7B9B; animation: shake .38s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+  .st-head { display: flex; align-items: center; gap: 10px; }
+  .st-av { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: #FFF2F9; }
+  .st-av svg { width: 40px; height: 40px; }
+  .st-name { font-size: 19px; font-weight: 800; color: #3D3350; }
+  .st-sub { font-size: 13px; color: #A090B2; font-weight: 600; margin-top: 1px; }
+  .st-score {
+    margin-left: auto; min-width: 52px; height: 40px; padding: 0 10px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #FFB0D4, #FF6FAE); color: #fff; font-size: 18px; font-weight: 800;
+    box-shadow: 0 4px 10px rgba(255,107,53,.32);
+  }
+  .st-score small { font-size: 12px; font-weight: 600; opacity: .85; }
+
+  .qbox { flex: 1; display: grid; place-items: center; margin: 6px 0 4px; }
+  .qbox svg { width: 100%; height: 166px; }
+  .numbox { fill: #fff; stroke: #DCCFE8; stroke-width: 3; }
+  .numbox.blank { stroke: #FF85BD; stroke-width: 3.5; stroke-dasharray: 8 6; fill: #FFF7FB; }
+  .numbox.filled { stroke: #FF85BD; stroke-width: 3.5; fill: #FFEFF7; }
+  .ntext { font-size: 34px; font-weight: 800; fill: #4A3E5C; }
+  .ntext.ans { fill: #FF6FAE; }
+  .ntext.q { fill: #FFA8D2; font-size: 32px; }
+  .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
+
+  .pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .key {
+    height: 50px; border-radius: 12px; background: #FBF6FD; border: 2px solid #EFE4F6; color: #4A3E5C;
+    font-size: 24px; font-weight: 800; cursor: pointer; transition: .12s; display: grid; place-items: center;
+  }
+  .key:hover { background: #FFF2F9; border-color: #FFC2E0; color: #FF6FAE; transform: translateY(-2px); }
+  .key.sel { background: linear-gradient(135deg, #FFB0D4, #FF6FAE); border-color: #FF6FAE; color: #fff; box-shadow: 0 5px 12px rgba(255,107,53,.35); }
+  .acts { display: flex; gap: 10px; margin-top: 12px; }
+  .btn {
+    flex: 1; height: 46px; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer;
+    font-family: inherit; appearance: none; border: 2px solid #EFE4F6; background: #FBF6FD; color: #74648A; transition: .12s;
+    display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0;
+  }
+  .btn:hover { background: #F7EEFB; }
+  .btn.go { border-color: #FF6FAE; background: linear-gradient(135deg, #FFB0D4, #FF6FAE); color: #fff;
+    box-shadow: 0 5px 12px rgba(255,107,53,.32); }
+  .btn.go:disabled { background: #F2E8F7; border-color: #EFE4F6; color: #B9ABC7; box-shadow: none; cursor: not-allowed; }
+  .btn.go:not(:disabled):hover { filter: brightness(1.05); }
+
+  /* ============ 弹窗 ============ */
+  .mask {
+    position: absolute; inset: 0; background: rgba(20,32,46,.55); display: none; z-index: 30;
+    align-items: center; justify-content: center; backdrop-filter: blur(3px);
+  }
+  .mask.show { display: flex; }
+  .modal {
+    width: 720px; background: #fff; border-radius: 26px; padding: 34px 40px 30px;
+    box-shadow: 0 30px 70px rgba(0,0,0,.35); animation: pop .28s cubic-bezier(.3,1.4,.5,1);
+  }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal h3 { font-size: 27px; color: #3D3350; margin-bottom: 18px; text-align: center; }
+  .modal ul { list-style: none; }
+  .modal li { font-size: 17px; color: #5B4B6E; line-height: 1.9; padding-left: 26px; position: relative; }
+  .modal li::before { content: "▸"; position: absolute; left: 6px; color: #FF85BD; font-weight: 800; }
+  .modal .foot { display: flex; gap: 14px; justify-content: center; margin-top: 26px; }
+  .mbtn { padding: 12px 34px; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; border: none;
+    background: linear-gradient(135deg, #FFB0D4, #FF6FAE); color: #fff; box-shadow: 0 6px 14px rgba(255,107,53,.35); }
+  .mbtn.ghost { background: #F7F0FB; color: #74648A; box-shadow: none; }
+  .crown { font-size: 78px; text-align: center; margin-bottom: 6px; }
+  .win-txt { text-align: center; font-size: 21px; color: #5B4B6E; margin-bottom: 4px; }
+  .win-name { text-align: center; font-size: 38px; font-weight: 900; color: #FF6FAE; margin-bottom: 8px; }
+  .rank { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
+  .rk { padding: 10px 16px; border-radius: 12px; background: #FBF6FD; font-size: 15px; font-weight: 700; color: #6B5B7E; }
+  .rk:first-child { background: linear-gradient(135deg, #FFE9A8, #FFD24D); color: #8A5B00; }
+
+  /* 计时器 */
+  .timer { display: none; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 10px;
+    background: #FFF0F7; border: 1.5px solid #FFC6E2; color: #FF6FAE; font-size: 16px; font-weight: 800; }
+  .timer.on { display: flex; }
+  .timer b { font-size: 19px; font-variant-numeric: tabular-nums; }
+  .timer.urgent { animation: pulse .55s ease-in-out infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  .plus.minus { color: #FF7B9B; text-shadow: 0 3px 0 #C23B72, 0 0 14px rgba(255,91,91,.85); }
+
+  /* 自定义出题 */
+  .cq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .cq-row { background: #FCF7FE; border: 2px solid #F2E7F8; border-radius: 16px; padding: 14px 10px; text-align: center; }
+  .cq-row label { display: block; font-size: 15px; font-weight: 700; color: #8A7A9C; margin-bottom: 8px; }
+  .cq-row input { width: 100%; height: 58px; border: 2.5px solid #E7D9F1; border-radius: 12px; text-align: center;
+    font-size: 30px; font-weight: 800; color: #FF6FAE; outline: none; font-family: inherit; }
+  .cq-row input:focus { border-color: #FFA8D2; background: #FFF6FB; }
+  .cq-row input::placeholder { font-size: 15px; color: #CDBFD9; font-weight: 600; }
+  .tip { margin-top: 16px; font-size: 15px; color: #9A8AAB; text-align: center; line-height: 1.7; }
+  .tip.err { color: #FF6B8B; font-weight: 700; }
+
+  /* 学习分类选择器 */
+  .subj-sel {
+    height: 38px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #EFE4F6;
+    background: #F7F0FB; font-size: 15px; font-weight: 700; color: #3D3350;
+    font-family: inherit; outline: none; cursor: pointer;
+  }
+  .subj-sel:hover { background: #F3EDFC; border-color: #DCCBFA; }
+
+  /* ============ 拼音题图 ============ */
+  .py-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .py-row { display: flex; gap: 18px; }
+  .py-box {
+    width: 88px; padding: 8px 0 6px; border-radius: 14px; text-align: center;
+    background: #FFF7FB; border: 2.5px dashed #FF85BD; cursor: pointer; transition: .15s; user-select: none;
+  }
+  .py-box:hover { background: #FFEFF7; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(255,138,61,.25); }
+  .py-box b { display: block; font-size: 32px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
+  .py-box span { display: block; font-size: 12px; color: #B07A9E; font-weight: 700; margin-top: 1px; }
+  .py-blend {
+    border: none; border-radius: 999px; background: linear-gradient(135deg, #FFB0D4, #FF6FAE);
+    color: #fff; font-size: 14px; font-weight: 800; padding: 7px 20px; cursor: pointer; font-family: inherit;
+  }
+  .py-blend:hover { filter: brightness(1.07); }
+  .key.charKey { font-size: 30px; }
+
+  /* 拼音-分与合 题图 */
+  .pyb-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .pyb-top {
+    display: flex; align-items: center; gap: 16px; padding: 8px 22px;
+    background: #FFF7FB; border: 2.5px solid #FFC2E0; border-radius: 16px;
+    cursor: pointer; transition: .15s; user-select: none;
+  }
+  .pyb-top:hover { background: #FFEFF7; box-shadow: 0 4px 10px rgba(255,138,61,.22); }
+  .pyb-top b { font-size: 27px; font-weight: 800; color: #FF6FAE; letter-spacing: 1px; }
+  .pyb-top i { font-style: normal; font-size: 30px; font-weight: 800; color: #4A3E5C; }
+  .pyb-top span { font-size: 12px; color: #B07A9E; font-weight: 700; }
+  .pyb-links { width: 240px; height: 22px; margin: 2px 0; }
+  .qbox svg.pyb-links { width: 240px; height: 22px; margin: 2px 0; }   /* 覆盖 .qbox svg 的 166px 通配高度 */
+  .pyb-row { display: flex; gap: 26px; }
+  .pyb-slot {
+    min-width: 92px; padding: 4px 0 4px; border-radius: 14px; text-align: center;
+    background: #FFF7FB; border: 2.5px dashed #FF85BD;
+  }
+  .pyb-slot.filled { border-style: solid; background: #FFEFF7; }
+  .pyb-slot b { display: block; font-size: 26px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
+  .pyb-slot span { display: block; font-size: 12px; color: #B07A9E; font-weight: 700; }
+  .pad-cap { font-size: 12px; font-weight: 700; color: #A090B2; margin: 2px 0 5px 4px; }
+  .pad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 7px; }
+
+  /* ============ 全屏拼音表 ============ */
+  .chart-mask {
+    position: fixed; inset: 0; z-index: 999; display: none; overflow: auto;
+    background: linear-gradient(180deg, #FFF6FB 0%, #F7F2FF 100%); padding: 26px 32px 70px;
+  }
+  .chart-mask.show { display: block; }
+  .chart-head { max-width: 1240px; margin: 0 auto 4px; display: flex; align-items: center; gap: 12px; }
+  .chart-head h2 { font-size: 30px; color: #FF6FAE; letter-spacing: 2px; margin-right: auto; }
+  .chart-body { max-width: 1240px; margin: 0 auto; }
+  .chart-body h4 { margin: 22px 0 10px; font-size: 19px; color: #3D3350; }
+  .c-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+  .c-card {
+    background: #fff; border-radius: 14px; padding: 12px 6px 10px; text-align: center; cursor: pointer;
+    box-shadow: 0 3px 8px rgba(40,70,110,.10); border: 2px solid #F3E4F0; transition: .15s; user-select: none;
+  }
+  .c-card:hover { transform: translateY(-3px); border-color: #FFA8D2; box-shadow: 0 6px 14px rgba(255,138,61,.22); }
+  .c-card b { display: block; font-size: 24px; font-weight: 800; color: #FF6FAE; line-height: 1.2; }
+  .c-card span { display: block; font-size: 13px; color: #9A8AAB; margin-top: 3px; font-weight: 600; }
+  .c-card.tone b { font-size: 30px; }
+  .c-card.zi b { font-size: 32px; color: #3D3350; }
+  .c-card.zi span { color: #FF85BD; }
+
+  /* ============ 自定义头像 ============ */
+  .st-av { position: relative; cursor: pointer; }
+  .st-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; }
+  .av-btn {
+    position: absolute; right: -5px; bottom: -5px; width: 19px; height: 19px; border-radius: 50%;
+    background: #fff; border: 2px solid #FFC6E2; display: grid; place-items: center;
+    font-size: 9px; line-height: 1; box-shadow: 0 2px 5px rgba(150,80,130,.25);
+    pointer-events: none; transition: transform .15s;
+  }
+  .st-av:hover .av-btn { transform: scale(1.15); }
+  .av-clear {
+    position: absolute; right: -6px; top: -6px; width: 17px; height: 17px; border-radius: 50%;
+    background: #FF6B8B; color: #fff; font-size: 11px; font-weight: 800; line-height: 1;
+    display: none; place-items: center; border: 2px solid #fff; z-index: 3;
+  }
+  .st-av.has-av .av-clear { display: grid; }
+  .runner img {
+    position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
+    width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 4px solid #fff;
+    box-shadow: 0 4px 10px rgba(90,60,110,.22);
+  }
+  .runner .rbadge {
+    position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    min-width: 22px; height: 22px; padding: 0 4px; border-radius: 999px; color: #fff;
+    font-size: 12px; font-weight: 800; display: grid; place-items: center;
+    border: 2px solid #fff; box-shadow: 0 2px 5px rgba(90,60,110,.2);
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="board" id="board">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">数</div>
+        <select class="subj-sel" id="subjectSel">
+          <option value="math">数学 · 分与合</option>
+          <option value="pinyin">拼音 · 点读练习</option>
+          <option value="pinyin-blend">拼音 · 分与合</option>
+        </select>
+      </div>
+      <div class="tabs" id="tabs">
+        <div class="tab on" data-mode="practice">练习</div>
+        <div class="tab" data-mode="challenge">挑战</div>
+        <div class="tab" data-mode="pyblend" style="display:none">拼音-分与合</div>
+        <div class="tab" data-mode="custom">自定义</div>
+      </div>
+      <div class="title">分与合田径大赛</div>
+      <div class="tools">
+        <div class="timer" id="timer">⏱ <b>02:00</b></div>
+        <div class="diff" id="diff">
+          <span data-max="5">5以内</span><span class="on" data-max="10">10以内</span>
+        </div>
+        <div class="tool" id="btnChart" style="display:none">📖 拼音表</div>
+        <div class="tool" id="btnSound">🔊 音效</div>
+        <div class="tool warn" id="btnReset">↻ 重赛</div>
+        <div class="tool" id="btnRule">？ 规则</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
+      <div class="banner">🏃 答对一题 · 前进一格 🏁</div>
+      <div class="lanes" id="lanes">
+        <div class="finish-flag"></div><div class="finish"></div>
+        <div class="ruler" id="ruler"></div>
+      </div>
+    </div>
+
+    <div class="stations" id="stations"></div>
+
+    <div class="mask" id="maskRule">
+      <div class="modal">
+        <h3>游戏规则</h3>
+        <ul id="ruleList"></ul>
+        <div class="foot"><button class="mbtn" id="closeRule">知道了</button></div>
+      </div>
+    </div>
+
+    <div class="mask" id="maskCustom">
+      <div class="modal" style="width:660px">
+        <h3>自定义出题</h3>
+        <div class="cq">
+          <div class="cq-row"><label>总 数</label><input id="cqTop" type="number" min="0" max="10" placeholder="留空=要填"></div>
+          <div class="cq-row"><label>部分 ①</label><input id="cqA" type="number" min="0" max="10" placeholder="留空=要填"></div>
+          <div class="cq-row"><label>部分 ②</label><input id="cqB" type="number" min="0" max="10" placeholder="留空=要填"></div>
+        </div>
+        <p class="tip" id="cqTip">把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。</p>
+        <div class="foot">
+          <button class="mbtn ghost" id="cqCancel">取消</button>
+          <button class="mbtn" id="cqApply">应用出题</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mask" id="maskWin">
+      <div class="modal">
+        <div class="crown">🏆</div>
+        <div class="win-txt">冠军小组</div>
+        <div class="win-name" id="winName"></div>
+        <div class="rank" id="rankList"></div>
+        <div class="foot">
+          <button class="mbtn ghost" id="closeWin">继续观战</button>
+          <button class="mbtn" id="againWin">再来一局</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="chart-mask" id="chartMask">
+  <div class="chart-head">
+    <h2>🔤 拼音点读表</h2>
+    <div class="tool" id="chartFs">⛶ 全屏</div>
+    <div class="tool warn" id="chartClose">✕ 关闭</div>
+  </div>
+  <div class="chart-body" id="chartBody"></div>
+</div>
+
+<script>
+/* ---------------- 缩放自适应 ---------------- */
+const board = document.getElementById('board');
+function fit() {
+  const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  board.style.transform = `scale(${s})`;
+  const st = document.getElementById('stage');
+  st.style.width = (1920 * s) + 'px';
+  st.style.height = (1080 * s) + 'px';
+}
+window.addEventListener('resize', fit); fit();
+
+/* ---------------- 角色 SVG ---------------- */
+const ANIMALS = [
+  { key:'kuromi', name:'库洛米', color:'#A98BFF', c1:'#E3D7FF', c2:'#CBB4FF' },
+  { key:'egg',    name:'蛋仔',   color:'#F5A623', c1:'#FFEDB8', c2:'#FFD770' },
+  { key:'elsa',   name:'爱莎',   color:'#4FB8EE', c1:'#D5EEFF', c2:'#A9DBFF' },
+  { key:'egg2',   name:'粉蛋仔', color:'#FF7EB6', c1:'#FFDBEC', c2:'#FFB3D6' }
+];
+/* 卡通简化版角色：库洛米 / 蛋仔 / 爱莎公主 / 粉色蛋仔 */
+function animalSVG(kind, n, color) {
+  const badge = `<circle cx="50" cy="95" r="13" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+                 <text x="50" y="100" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${n}</text>`;
+  const base  = `<ellipse cx="50" cy="115" rx="30" ry="6" fill="rgba(70,45,90,.16)"/>`;
+
+  if (kind === 'kuromi') {
+    return `<svg viewBox="0 0 100 120">
+      ${base}
+      <path d="M26 110 C26 82 74 82 74 110 Z" fill="#3A3346"/>
+      <ellipse cx="50" cy="85" rx="15" ry="6" fill="#FFF6FA"/>
+      <path d="M32 54 C20 42 14 21 22 10 C35 15 45 33 46 52 Z" fill="#3A3346"/>
+      <path d="M68 54 C80 42 86 21 78 10 C65 15 55 33 54 52 Z" fill="#3A3346"/>
+      <circle cx="50" cy="58" r="30" fill="#3A3346"/>
+      <circle cx="50" cy="61" r="23" fill="#FFF6FA"/>
+      <circle cx="50" cy="30" r="9" fill="#FFD1E6"/>
+      <circle cx="46.5" cy="29" r="2" fill="#3A3346"/><circle cx="53.5" cy="29" r="2" fill="#3A3346"/>
+      <rect x="46" y="34" width="2.4" height="3" rx="1" fill="#3A3346"/>
+      <rect x="51.6" y="34" width="2.4" height="3" rx="1" fill="#3A3346"/>
+      <ellipse cx="41" cy="60" rx="3.4" ry="5" fill="#3A3346"/>
+      <ellipse cx="59" cy="60" rx="3.4" ry="5" fill="#3A3346"/>
+      <circle cx="42" cy="58.4" r="1.2" fill="#fff"/><circle cx="60" cy="58.4" r="1.2" fill="#fff"/>
+      <circle cx="33" cy="69" r="3.6" fill="#FFB3D4" opacity=".85"/>
+      <circle cx="67" cy="69" r="3.6" fill="#FFB3D4" opacity=".85"/>
+      <path d="M46 71 q4 3.6 8 0" stroke="#3A3346" stroke-width="2" fill="none" stroke-linecap="round"/>
+      ${badge}
+    </svg>`;
+  }
+
+  if (kind === 'egg' || kind === 'egg2') {
+    const body = kind === 'egg2' ? '#FFD6E7' : '#FFF0C2';
+    const line = kind === 'egg2' ? '#F08FB8' : '#E8B84A';
+    const hat  = kind === 'egg2' ? '#63C7F5' : '#FF8FC2';
+    return `<svg viewBox="0 0 100 120">
+      ${base}
+      <ellipse cx="33" cy="110" rx="9" ry="5" fill="${line}" opacity=".5"/>
+      <ellipse cx="67" cy="110" rx="9" ry="5" fill="${line}" opacity=".5"/>
+      <ellipse cx="50" cy="75" rx="31" ry="34" fill="${body}" stroke="${line}" stroke-width="3"/>
+      <ellipse cx="18" cy="80" rx="6" ry="9" fill="${body}" stroke="${line}" stroke-width="3" transform="rotate(-18 18 80)"/>
+      <ellipse cx="82" cy="80" rx="6" ry="9" fill="${body}" stroke="${line}" stroke-width="3" transform="rotate(18 82 80)"/>
+      <path d="M50 14 L36 44 L64 44 Z" fill="${hat}"/>
+      <circle cx="50" cy="13" r="6" fill="#FFD35C"/>
+      <circle cx="44" cy="34" r="2.2" fill="#fff" opacity=".85"/>
+      <circle cx="56" cy="30" r="1.8" fill="#fff" opacity=".85"/>
+      <ellipse cx="42" cy="64" rx="3.2" ry="4.2" fill="#3A3346"/>
+      <ellipse cx="58" cy="64" rx="3.2" ry="4.2" fill="#3A3346"/>
+      <circle cx="43" cy="62.6" r="1.1" fill="#fff"/><circle cx="59" cy="62.6" r="1.1" fill="#fff"/>
+      <circle cx="33" cy="72" r="4" fill="#FFB3D4" opacity=".9"/>
+      <circle cx="67" cy="72" r="4" fill="#FFB3D4" opacity=".9"/>
+      <path d="M46 71 q4 4 8 0" stroke="#3A3346" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      ${badge}
+    </svg>`;
+  }
+
+  // 爱莎公主
+  return `<svg viewBox="0 0 100 120">
+    ${base}
+    <path d="M30 108 C16 78 34 56 50 56 C66 56 84 78 70 108 Z" fill="#CFEBFF"/>
+    <path d="M32 110 C32 86 68 86 68 110 Z" fill="#A8DCFF"/>
+    <path d="M40 78 L60 78 L63 94 L37 94 Z" fill="#7FC4F0"/>
+    <rect x="45" y="67" width="10" height="13" fill="#FFE0CC"/>
+    <circle cx="50" cy="52" r="24" fill="#F7D98F"/>
+    <circle cx="50" cy="55" r="20" fill="#FFE0CC"/>
+    <path d="M30 50 a20 20 0 0 1 40 0 q-5 -12 -20 -12 q-15 0 -20 12 Z" fill="#F7D98F"/>
+    <path d="M66 60 C74 70 76 84 72 98" stroke="#F7D98F" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M68 68 l6 3 M70 78 l6 2 M71 88 l5 2" stroke="#E8C56A" stroke-width="2" stroke-linecap="round"/>
+    <path d="M42 30 L46 20 L50 28 L54 20 L58 30 Z" fill="#9FE0FF" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
+    <ellipse cx="43" cy="57" rx="3" ry="3.8" fill="#4A6FA8"/>
+    <ellipse cx="57" cy="57" rx="3" ry="3.8" fill="#4A6FA8"/>
+    <circle cx="44" cy="56" r="1" fill="#fff"/><circle cx="58" cy="56" r="1" fill="#fff"/>
+    <path d="M38 50 l3 -1.6 M62 50 l-3 -1.6" stroke="#E8C56A" stroke-width="2" stroke-linecap="round"/>
+    <path d="M46 64 q4 3 8 0" stroke="#E8A08F" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="35" cy="63" r="3.4" fill="#FFB3D4" opacity=".8"/>
+    <circle cx="65" cy="63" r="3.4" fill="#FFB3D4" opacity=".8"/>
+    ${badge}
+  </svg>`;
+}
+
+let MAXN = 10;
+let MODE = 'practice';          // practice 练习 | challenge 挑战 | custom 自定义
+let customQ = null;
+const CHALLENGE_SEC = 120;
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+/* ---------------- 学习分类 ---------------- */
+let SUBJECT = 'math';            // math 数学分与合 | pinyin 拼音练习
+
+/* ---------------- 拼音数据 ---------------- */
+const SM_LIST = [                // [声母, 呼读音示例字（用于发声）]
+  ['b','波'],['p','坡'],['m','摸'],['f','佛'],['d','得'],['t','特'],['n','讷'],['l','乐'],
+  ['g','哥'],['k','科'],['h','喝'],['j','鸡'],['q','七'],['x','西'],
+  ['zh','知'],['ch','吃'],['sh','狮'],['r','日'],['z','资'],['c','刺'],['s','丝'],['y','一'],['w','乌']
+];
+const SM_SAY = Object.fromEntries(SM_LIST);
+const YM_GROUPS = [
+  ['单韵母', [['a','啊'],['o','喔'],['e','鹅'],['i','衣'],['u','乌'],['ü','鱼']]],
+  ['复韵母', [['ai','爱'],['ei','欸'],['ui','威'],['ao','奥'],['ou','欧'],['iu','优'],['ie','耶'],['üe','约'],['er','耳'],['ua','蛙'],['uo','窝']]],
+  ['鼻韵母', [['an','安'],['en','恩'],['in','因'],['un','温'],['ün','晕'],['ang','昂'],['eng','鹏'],['ing','星'],['ong','东']]],
+  ['组合韵母', [['ian','天'],['iao','鸟'],['uan','万'],['iang','羊'],['uang','窗']]]
+];
+const YM_SAY = {};
+YM_GROUPS.forEach(([, arr]) => arr.forEach(([y, c]) => YM_SAY[y] = c));
+const TONE_NAME = { 1: '第一声', 2: '第二声', 3: '第三声', 4: '第四声' };
+const TONE_MARK = { 1: 'ˉ', 2: 'ˊ', 3: 'ˇ', 4: 'ˋ' };
+// [汉字, 带调拼音, 声母, 韵母, 声调] —— 一年级常用字
+const CHARS = [
+  ['妈','mā','m','a',1],['爸','bà','b','a',4],['米','mǐ','m','i',3],['大','dà','d','a',4],
+  ['地','dì','d','i',4],['田','tián','t','ian',2],['山','shān','sh','an',1],['石','shí','sh','i',2],
+  ['水','shuǐ','sh','ui',3],['火','huǒ','h','uo',3],['土','tǔ','t','u',3],['花','huā','h','ua',1],
+  ['鸟','niǎo','n','iao',3],['鱼','yú','y','u',2],['马','mǎ','m','a',3],['羊','yáng','y','ang',2],
+  ['白','bái','b','ai',2],['月','yuè','y','üe',4],['日','rì','r','i',4],['口','kǒu','k','ou',3],
+  ['手','shǒu','sh','ou',3],['目','mù','m','u',4],['足','zú','z','u',2],['金','jīn','j','in',1],
+  ['云','yún','y','ün',2],['雪','xuě','x','üe',3],['天','tiān','t','ian',1],['星','xīng','x','ing',1],
+  ['风','fēng','f','eng',1],['雨','yǔ','y','u',3],['车','chē','ch','e',1],['书','shū','sh','u',1],
+  ['虫','chóng','ch','ong',2],['竹','zhú','zh','u',2],['禾','hé','h','e',2],['猫','māo','m','ao',1],
+  ['狗','gǒu','g','ou',3],['鹿','lù','l','u',4],['飞','fēi','f','ei',1],['春','chūn','ch','un',1],
+  ['秋','qiū','q','iu',1],['冬','dōng','d','ong',1],['画','huà','h','ua',4],['吃','chī','ch','i',1],
+  ['跑','pǎo','p','ao',3],['跳','tiào','t','iao',4],['河','hé','h','e',2],['桥','qiáo','q','iao',2]
+].map(([c, p, sm, ym, t]) => ({ c, p, sm, ym, t }));
+
+/* ---------------- 语音点读（Web Speech API） ---------------- */
+let zhVoice = null;
+function pickVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices();
+  zhVoice = vs.find(v => /zh[-_]CN/i.test(v.lang)) || vs.find(v => /zh/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window) {
+  pickVoice();
+  speechSynthesis.onvoiceschanged = pickVoice;
+}
+function speak(text, rate) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    if (zhVoice) u.voice = zhVoice;
+    u.rate = rate || 0.75;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+function newQuestion() {
+  if (SUBJECT === 'pinyin') return MODE === 'pyblend' ? newPinyinBlendQuestion() : newPinyinQuestion();
+  const flip = Math.random() < 0.5;           // false=上合下分(总数在上) true=上分下合(部分在上)
+  if (Math.random() < 0.5) {                 // 知总数求部分
+    const t = rnd(2, MAXN);
+    const a = rnd(1, t - 1);
+    const b = t - a;
+    const blankSecond = Math.random() < 0.5;
+    return { top: t, parts: blankSecond ? [a, null] : [null, b], answer: blankSecond ? b : a, flip };
+  }
+  const a = rnd(1, MAXN - 1);                // 知部分求总数
+  const b = rnd(1, MAXN - a);
+  return { top: null, parts: [a, b], answer: a + b, flip };
+}
+/* 拼音题：给出 声母+韵母+声调，从 4 个汉字选项中选出对应字 */
+function newPinyinQuestion() {
+  const t = CHARS[rnd(0, CHARS.length - 1)];
+  const pool = CHARS.filter(x => x.c !== t.c && x.p !== t.p);   // 干扰项不含同音字
+  const opts = [t.c];
+  while (opts.length < 4) {
+    const d = pool[rnd(0, pool.length - 1)].c;
+    if (!opts.includes(d)) opts.push(d);
+  }
+  for (let i = opts.length - 1; i > 0; i--) {                  // 洗牌
+    const j = rnd(0, i);
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  return { kind: 'py', top: null, parts: [null, null], flip: false,
+           char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, tone: t.t, opts, answer: t.c };
+}
+/* 拼音-分与合题：上面显示 完整拼音(带调)+汉字，下面让学生选出 声母 + 韵母 */
+function newPinyinBlendQuestion() {
+  const t = CHARS[rnd(0, CHARS.length - 1)];
+  const smPool = SM_LIST.map(([s]) => s).filter(s => s !== t.sm);
+  const ymPool = Object.keys(YM_SAY).filter(y => y !== t.ym);
+  const pick3 = arr => {                       // 取 3 个不重复干扰项
+    const out = [];
+    while (out.length < 3) {
+      const v = arr[rnd(0, arr.length - 1)];
+      if (!out.includes(v)) out.push(v);
+    }
+    return out;
+  };
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  return { kind: 'pyblend', top: null, parts: [null, null], flip: false,
+           char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, tone: t.t,
+           smOpts: shuffle([t.sm, ...pick3(smPool)]),
+           ymOpts: shuffle([t.ym, ...pick3(ymPool)]),
+           answer: t.c };
+}
+function questionKey(q) {
+  if (q.kind === 'py') return `py|${q.char}`;
+  if (q.kind === 'pyblend') return `pyb|${q.char}`;
+  return `${q.top}|${q.parts[0]}|${q.parts[1]}|${q.flip ? 1 : 0}`;
+}
+function uniqueQuestion() {
+  let fallback = null;
+  for (let i = 0; i < 80; i++) {
+    const q = newQuestion();
+    const key = questionKey(q);
+    if (!fallback) fallback = q;
+    if (!usedQKeys.has(key)) {
+      usedQKeys.add(key);
+      return q;
+    }
+  }
+  if (fallback) {
+    usedQKeys.clear();
+    usedQKeys.add(questionKey(fallback));
+  }
+  return fallback;
+}
+
+/* ---------------- 赛道 ---------------- */
+const STEPS = 10, START = 60, FINISH = 1500, RUNNER_W = 96;
+const START_C = START + RUNNER_W / 2;                 // 角色中心的起点
+const stepPx = (FINISH - START_C) / STEPS;            // FINISH = 终点线中心（角色中心抵达处）
+const lanesEl = document.getElementById('lanes');
+
+const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, done: false, lock: false }));
+const usedQKeys = new Set();
+let qTimers = new WeakMap();
+
+GROUPS.forEach(g => {
+  const lane = document.createElement('div');
+  lane.className = 'lane';
+  lane.style.background = `linear-gradient(180deg, ${g.c1} 0%, ${g.c2} 100%)`;
+  lane.innerHTML = `<div class="lane-tag" style="color:${g.color}">${g.no}号<br>${g.name}</div>
+                    <div class="runner" id="run${g.no}">${animalSVG(g.key, g.no, g.color)}</div>`;
+  lanesEl.appendChild(lane);
+  g.laneEl = lane;
+  g.runEl = lane.querySelector('.runner');
+  g.runEl.style.left = START + 'px';
+});
+
+const ruler = document.getElementById('ruler');
+for (let i = 0; i <= STEPS; i++) {
+  const x = START_C + i * stepPx;
+  const t = document.createElement('div');
+  t.className = 'tick' + (i === STEPS ? ' end' : '');
+  t.style.left = x + 'px';
+  t.innerHTML = `<i></i><b>${i === STEPS ? '终点' : (i === 0 ? '起点' : i + '/10')}</b>`;
+  ruler.appendChild(t);
+}
+
+/* ---------------- 答题台 ---------------- */
+/* 拼音题图：声母 + 韵母 + 声调 三张卡片，点击即发声 */
+function pinyinDiagram(q, pick) {
+  return `<div class="py-wrap">
+    <div class="py-row">
+      <div class="py-box" data-say="${SM_SAY[q.sm] || q.sm}"><b>${q.sm}</b><span>声母 · 点击听</span></div>
+      <div class="py-box" data-say="${YM_SAY[q.ym] || q.ym}"><b>${q.ym}</b><span>韵母 · 点击听</span></div>
+      <div class="py-box" data-say="${TONE_NAME[q.tone]}"><b>${TONE_MARK[q.tone]}</b><span>${TONE_NAME[q.tone]}</span></div>
+    </div>
+    <button type="button" class="py-blend" data-say="${q.char}">🔊 拼一拼 · 听整字</button>
+    ${pick !== null ? `<div style="font-size:13px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
+  </div>`;
+}
+/* 拼音-分与合题图：上=完整拼音(带调)+汉字（点读）；下=声母、韵母 两个空槽 */
+function pinyinBlendDiagram(q, pickSm, pickYm) {
+  const slot = (val, filled, label) =>
+    `<div class="pyb-slot${filled ? ' filled' : ''}"><b>${val || '?'}</b><span>${label}</span></div>`;
+  return `<div class="pyb-wrap">
+    <div class="pyb-top" data-say="${q.char}">
+      <b>${q.pinyin}</b><i>${q.char}</i><span>🔊 点击听</span>
+    </div>
+    <svg class="pyb-links" viewBox="0 0 260 24" preserveAspectRatio="none">
+      <path class="link" d="M130 0 L86 24"/><path class="link" d="M130 0 L174 24"/>
+    </svg>
+    <div class="pyb-row">
+      ${slot(pickSm, !!pickSm, '声母')}
+      ${slot(pickYm, !!pickYm, '韵母')}
+    </div>
+  </div>`;
+}
+function diagram(q, pick, pickSm, pickYm) {
+  if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm);
+  if (q.kind === 'py') return pinyinDiagram(q, pick);
+  const box = (x, y, val, isBlank) => {
+    const cls = isBlank ? (pick !== null ? 'numbox filled' : 'numbox blank') : 'numbox';
+    const txt = isBlank
+      ? (pick !== null ? `<text class="ntext ans" x="${x + 40}" y="${y + 38}" text-anchor="middle">${pick}</text>`
+                       : `<text class="ntext q" x="${x + 40}" y="${y + 38}" text-anchor="middle">?</text>`)
+      : `<text class="ntext" x="${x + 40}" y="${y + 38}" text-anchor="middle">${val}</text>`;
+    return `<rect class="${cls}" x="${x}" y="${y}" width="80" height="52" rx="14"/>${txt}`;
+  };
+  // q.flip = false → 上合下分（总数在上）；true → 上分下合（部分数在上）
+  const links = q.flip
+    ? `<path class="link" d="M80 64 L150 108" /><path class="link" d="M220 64 L150 108" />`
+    : `<path class="link" d="M150 66 L80 108" /><path class="link" d="M150 66 L220 108" />`;
+  const topRow  = q.flip
+    ? box(40, 12, q.parts[0], q.parts[0] === null) + box(180, 12, q.parts[1], q.parts[1] === null)
+    : box(110, 12, q.top, q.top === null);
+  const botRow  = q.flip
+    ? box(110, 108, q.top, q.top === null)
+    : box(40, 108, q.parts[0], q.parts[0] === null) + box(180, 108, q.parts[1], q.parts[1] === null);
+  const label = q.flip ? '分 ⟶ 合' : '合 ⟶ 分';
+  return `<svg viewBox="0 0 300 176">
+    ${links}
+    ${topRow}
+    ${botRow}
+    <text x="150" y="170" text-anchor="middle" font-size="14" fill="#B4A6C4" font-weight="600">${label}</text>
+  </svg>`;
+}
+
+const stationsEl = document.getElementById('stations');
+GROUPS.forEach(g => {
+  const el = document.createElement('div');
+  el.className = 'station';
+  el.innerHTML = `
+    <div class="st-head">
+      <div class="st-av">${animalSVG(g.key, g.no, g.color)}<span class="av-btn">📷</span><span class="av-clear">×</span></div>
+      <div><div class="st-name">${g.no}号 ${g.name}</div><div class="st-sub">第 ${g.no} 小组</div></div>
+      <div class="st-score" id="sc${g.no}">0<small>/10</small></div>
+    </div>
+    <div class="qbox" id="qb${g.no}"></div>
+    <div class="pad" id="pad${g.no}"></div>
+    <div class="acts">
+      <button type="button" class="btn" id="cl${g.no}">清除</button>
+      <button type="button" class="btn go" id="ok${g.no}" disabled>确定</button>
+    </div>`;
+  stationsEl.appendChild(el);
+  g.el = el; g.qEl = el.querySelector(`#qb${g.no}`); g.padEl = el.querySelector(`#pad${g.no}`);
+  g.avEl = el.querySelector('.st-av');
+  g.okEl = el.querySelector(`#ok${g.no}`); g.scEl = el.querySelector(`#sc${g.no}`);
+  el.querySelector(`#cl${g.no}`).onclick = () => {
+    if (g.done || g.lock || finished) return;
+    g.pick = null; g.pickSm = null; g.pickYm = null; render(g);
+  };
+  g.okEl.onclick = () => submit(g);
+  g.qEl.addEventListener('click', e => {          // 题图内元素点读
+    const t = e.target.closest('[data-say]');
+    if (t) speak(t.dataset.say);
+  });
+});
+
+/* ---------------- 自定义头像（本地保存） ---------------- */
+const AV_KEY = 'trackrace.avatar.v1.';
+let pendingAv = null;
+const avInput = document.createElement('input');
+avInput.type = 'file';
+avInput.accept = 'image/*';
+avInput.style.display = 'none';
+document.body.appendChild(avInput);
+avInput.onchange = () => {
+  const f = avInput.files && avInput.files[0];
+  avInput.value = '';
+  if (!f || !pendingAv) return;
+  const g = pendingAv; pendingAv = null;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const S = 200, c = document.createElement('canvas');
+      c.width = c.height = S;
+      const ctx = c.getContext('2d');
+      const side = Math.min(im.width, im.height);
+      ctx.drawImage(im, (im.width - side) / 2, (im.height - side) / 2, side, side, 0, 0, S, S);
+      setAvatar(g, c.toDataURL('image/jpeg', 0.9));
+    };
+    im.onerror = () => alert('这张图片打不开，换一张试试～');
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+};
+function loadAvatars() {
+  GROUPS.forEach(g => {
+    try { const v = localStorage.getItem(AV_KEY + g.no); if (v) g.avatar = v; } catch (e) {}
+  });
+}
+function saveAvatar(g) {
+  try {
+    if (g.avatar) localStorage.setItem(AV_KEY + g.no, g.avatar);
+    else localStorage.removeItem(AV_KEY + g.no);
+  } catch (e) {}
+}
+function setAvatar(g, url) { g.avatar = url; paintAvatar(g); saveAvatar(g); }
+function paintAvatar(g) {
+  const has = !!g.avatar;
+  g.avEl.classList.toggle('has-av', has);
+  g.avEl.innerHTML = (has ? `<img src="${g.avatar}" alt="">` : animalSVG(g.key, g.no, g.color))
+    + `<span class="av-btn">📷</span><span class="av-clear">×</span>`;
+  g.runEl.innerHTML = has
+    ? `<img src="${g.avatar}" alt=""><span class="rbadge" style="background:${g.color}">${g.no}</span>`
+    : animalSVG(g.key, g.no, g.color);
+  g.avEl.onclick = e => {
+    if (e.target.classList.contains('av-clear')) { e.stopPropagation(); setAvatar(g, null); return; }
+    pendingAv = g; avInput.click();
+  };
+}
+
+function renderPad(g) {
+  g.padEl.innerHTML = '';
+  if (g.q.kind === 'pyblend') {                   // 拼音-分与合：先选声母，再选韵母（选项可点读）
+    g.padEl.style.display = 'block';
+    const cap = t => `<div class="pad-cap">${t} · 点击听音 🔊</div>`;
+    const sayOf = (slot, v) => slot === 'sm' ? (SM_SAY[v] || v) : (YM_SAY[v] || v);
+    const grid = (arr, slot) => `<div class="pad-grid">` + arr.map(v => {
+      const cur = slot === 'sm' ? g.pickSm : g.pickYm;
+      return `<div class="key charKey${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${v}</div>`;
+    }).join('') + '</div>';
+    g.padEl.innerHTML = cap('① 选声母') + grid(g.q.smOpts, 'sm')
+                      + cap('② 选韵母') + grid(g.q.ymOpts, 'ym');
+    g.padEl.querySelectorAll('.key').forEach(k => {
+      k.onclick = () => {
+        if (g.done || g.lock || finished) return;
+        if (k.dataset.slot === 'sm') g.pickSm = k.dataset.val;
+        else g.pickYm = k.dataset.val;
+        speak(sayOf(k.dataset.slot, k.dataset.val));   // 点读：声母读呼读音、韵母读示例音
+        render(g);
+      };
+    });
+    return;
+  }
+  g.padEl.style.display = 'grid';
+  if (g.q.kind === 'py') {                        // 拼音模式：4 个汉字选项
+    g.padEl.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    g.q.opts.forEach(ch => {
+      const k = document.createElement('div');
+      k.className = 'key charKey' + (g.pick === ch ? ' sel' : '');
+      k.textContent = ch;
+      k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = ch; render(g); };
+      g.padEl.appendChild(k);
+    });
+    return;
+  }
+  g.padEl.style.gridTemplateColumns = 'repeat(5, 1fr)';
+  for (let n = 1; n <= MAXN; n++) {
+    const k = document.createElement('div');
+    k.className = 'key' + (g.pick === n ? ' sel' : '');
+    k.textContent = n;
+  k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = n; render(g); };
+    g.padEl.appendChild(k);
+  }
+}
+function render(g) {
+  g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm);
+  renderPad(g);
+  g.okEl.disabled = g.q.kind === 'pyblend'
+    ? !(g.pickSm && g.pickYm)
+    : g.pick === null;
+}
+function resetGroup(g) {
+  g.lock = false;
+  g.pickSm = null; g.pickYm = null;
+  g.q = (MODE === 'custom' && customQ)
+    ? { top: customQ.top, parts: [customQ.parts[0], customQ.parts[1]], answer: customQ.answer, flip: Math.random() < 0.5 }
+    : uniqueQuestion();
+  g.pick = null; render(g);
+}
+
+/* ---------------- 提交判定 ---------------- */
+let finished = false;
+function submit(g) {
+  if (g.done || g.lock || finished) return;
+  if (g.q.kind === 'pyblend') { if (!g.pickSm || !g.pickYm) return; }
+  else if (g.pick === null) return;
+  g.lock = true;
+  g.okEl.disabled = true;
+  const ok = g.q.kind === 'pyblend'
+    ? (g.pickSm === g.q.sm && g.pickYm === g.q.ym)
+    : (g.pick === g.q.answer);
+  if (ok) {
+    beep(true);
+    if (g.q.kind === 'py' || g.q.kind === 'pyblend') speak(g.q.char);  // 拼音答对：点读该字巩固发音
+    g.el.classList.add('right');
+    g.progress = Math.min(STEPS, g.progress + 1);
+    g.scEl.innerHTML = `${g.progress}<small>/10</small>`;
+    g.runEl.classList.remove('run'); void g.runEl.offsetWidth; g.runEl.classList.add('run');
+    g.runEl.style.left = (START + g.progress * stepPx) + 'px';
+    const p = document.createElement('div');
+    p.className = 'plus'; p.textContent = '+1';
+    p.style.left = (START + g.progress * stepPx + 12) + 'px';
+    p.style.top = (g.runEl.parentElement.offsetTop + 16) + 'px';
+    lanesEl.appendChild(p);
+    setTimeout(() => p.remove(), 1100);
+    const timer = setTimeout(() => { g.el.classList.remove('right'); resetGroup(g); }, 700);
+    qTimers.set(g, timer);
+    if (g.progress >= STEPS) { g.done = true; setTimeout(() => win(g), 900); }
+  } else {
+    beep(false);
+    g.el.classList.add('wrong');
+    if (MODE === 'challenge' && g.progress > 0) {          // 挑战模式：答错后退一格
+      g.progress -= 1;
+      g.scEl.innerHTML = `${g.progress}<small>/10</small>`;
+      g.runEl.style.left = (START + g.progress * stepPx) + 'px';
+      const m = document.createElement('div');
+      m.className = 'plus minus'; m.textContent = '-1';
+      m.style.left = (START + g.progress * stepPx + 12) + 'px';
+      m.style.top = (g.runEl.parentElement.offsetTop + 16) + 'px';
+      lanesEl.appendChild(m);
+      setTimeout(() => m.remove(), 1100);
+    }
+    const timer = setTimeout(() => {
+      g.el.classList.remove('wrong');
+      g.lock = false;                                   // 答错后解锁，否则这组再也答不了题
+      g.pick = null; g.pickSm = null; g.pickYm = null; render(g);
+    }, 620);
+    qTimers.set(g, timer);
+  }
+}
+
+/* ---------------- 结算 ---------------- */
+function win(g, reason) {
+  if (finished) return; finished = true;
+  stopTimer();
+  GROUPS.forEach(group => { if (qTimers.has(group)) clearTimeout(qTimers.get(group)); });
+  document.querySelector('#maskWin .win-txt').textContent =
+    reason === 'tie' ? '时间到 · 平局' : reason === 'time' ? '时间到 · 领先小组' : '冠军小组';
+  document.getElementById('winName').textContent =
+    g ? `${g.no}号 ${g.name}组` : reason === 'tie' ? '多个小组并列领先' : '无人冲线';
+  const rank = [...GROUPS].sort((a, b) => b.progress - a.progress);
+  document.getElementById('rankList').innerHTML =
+    rank.map((x, i) => `<div class="rk">${['🥇','🥈','🥉','4️⃣'][i]} ${x.no}号${x.name} · ${x.progress}/10</div>`).join('');
+  document.getElementById('maskWin').classList.add('show');
+}
+
+/* ---------------- 模式切换 ---------------- */
+const timerEl = document.getElementById('timer');
+const bannerEl = document.querySelector('.banner');
+
+document.querySelectorAll('#tabs .tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('#tabs .tab').forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    setMode(t.dataset.mode);
+  };
+});
+
+function bannerFor(m) {
+  if (SUBJECT === 'pinyin') {
+    if (m === 'pyblend')  return '🧩 拼音-分与合 · 听音选拼 🏁';
+    return m === 'challenge' ? '⏱ 限时听音辨字 · 答错退一格 🏁' : '🔊 听音辨字 · 前进一格 🏁';
+  }
+  if (m === 'challenge') return '⏱ 限时挑战 · 答错退一格 🏁';
+  if (m === 'custom')    return '✏️ 自定义出题 · 教师定题 🏁';
+  return '🏃 答对一题 · 前进一格 🏁';
+}
+function setMode(m) {
+  MODE = m;
+  if (m !== 'custom') customQ = null;
+  bannerEl.innerHTML = bannerFor(m);
+  if (typeof syncSubjSel === 'function') syncSubjSel();
+  resetAll();
+  if (m === 'custom') openCustom();
+}
+
+/* ---------------- 计时器 ---------------- */
+let timerId = null, timeLeft = 0;
+const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+function startTimer(sec) {
+  stopTimer();
+  timeLeft = sec; timerEl.classList.add('on'); updateTimer();
+  timerId = setInterval(() => { timeLeft--; updateTimer(); if (timeLeft <= 0) endByTime(); }, 1000);
+}
+function updateTimer() {
+  timerEl.querySelector('b').textContent = fmt(Math.max(0, timeLeft));
+  timerEl.classList.toggle('urgent', timeLeft <= 15);
+}
+function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } timerEl.classList.remove('on', 'urgent'); }
+function endByTime() {
+  stopTimer();
+  const rank = [...GROUPS].sort((a, b) => b.progress - a.progress);
+  const tied = rank[0].progress > 0 && rank[1] && rank[1].progress === rank[0].progress;
+  win(tied ? null : rank[0].progress > 0 ? rank[0] : null, tied ? 'tie' : 'time');
+}
+
+/* ---------------- 自定义出题 ---------------- */
+const maskCustom = document.getElementById('maskCustom');
+const TIP_DEFAULT = '把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。';
+function openCustom() { maskCustom.classList.add('show'); }
+function syncTabs() {
+  document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.mode === MODE));
+}
+document.getElementById('cqCancel').onclick = () => {
+  maskCustom.classList.remove('show');
+  if (!customQ) { MODE = 'practice'; bannerEl.innerHTML = bannerFor('practice'); resetAll(); }
+  syncTabs();
+};
+document.getElementById('cqApply').onclick = () => {
+  const val = id => { const s = document.getElementById(id).value.trim(); return s === '' ? null : parseInt(s, 10); };
+  const top = val('cqTop'), a = val('cqA'), b = val('cqB');
+  const tip = document.getElementById('cqTip');
+  const err = msg => { tip.textContent = msg; tip.className = 'tip err'; };
+  if ([top, a, b].filter(x => x === null).length !== 1) return err('请只留空一格（学生要填的那格），另外两格填数。');
+  if ([top, a, b].some(x => x !== null && (isNaN(x) || x < 0 || x > 10))) return err('数字只能在 0 – 10 之间。');
+  if ([top, a, b].some(x => x !== null && x > MAXN)) return err(`当前范围是 ${MAXN} 以内，已填数字不能超过 ${MAXN}。`);
+  let q = null;
+  if (top === null) {
+    if (a + b > 10 || a + b < 1) return err('两个部分数之和要 ≥ 1 且 ≤ 10。');
+    q = { top: null, parts: [a, b], answer: a + b };
+  } else if (a === null) {
+    if (b >= top) return err('部分数必须小于总数 ' + top + '。');
+    q = { top, parts: [null, b], answer: top - b };
+  } else {
+    if (a >= top) return err('部分数必须小于总数 ' + top + '。');
+    q = { top, parts: [a, null], answer: top - a };
+  }
+  if (q.answer > MAXN) return err(`答案是 ${q.answer}，超过当前 ${MAXN} 以内范围。`);
+  customQ = q;
+  tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
+  maskCustom.classList.remove('show');
+  finished = false;
+  GROUPS.forEach(g => { g.done = false; resetGroup(g); });   // 换题不重置比分
+};
+
+/* ---------------- 控制 ---------------- */
+document.getElementById('btnRule').onclick = () => {
+  const modeText = MODE === 'challenge' ? '挑战模式' : MODE === 'custom' ? '自定义出题' : '练习模式';
+  const subjText = SUBJECT === 'pinyin' ? '拼音听音辨字' : '数学分与合';
+  const rules = SUBJECT === 'pinyin' ? [
+    `当前为${modeText} · 拼音练习，全班分为 4 组比赛。`,
+    MODE === 'pyblend'
+      ? '「拼音-分与合」：上方显示完整拼音（带声调）和汉字，点击可听读音；在下方选出正确的 声母 和 韵母。'
+      : '题目给出 声母 + 韵母 + 声调，在下方 4 个汉字中选出对应的字。',
+    '声母、韵母、声调卡片都可以点击听发音，「拼一拼」可听整字读音。',
+    '答对 → 小动物前进一格并读出该字；先前进 10 格的小组获胜。',
+    MODE === 'challenge' ? '挑战模式限时 2 分钟，答错后退一格。' : '练习模式答错不后退，可继续尝试。',
+    '点击顶栏「📖 拼音表」可全屏打开声母、韵母、四声、常用字点读表。'
+  ] : [
+    `当前为${modeText} · 数学分与合，范围是 ${MAXN} 以内；自动题在一局内不重复。`,
+    '全班分为 4 组，每组在下方答题台用数字键盘作答。',
+    '答对 → 该组小动物前进一格；前进 10 格抵达终点。',
+    MODE === 'challenge' ? '挑战模式限时 2 分钟，答错后退一格。' : '练习模式答错不后退，可继续尝试。',
+    MODE === 'custom' ? '自定义模式使用教师设置的同一道题，应用后不重置比分。' : '题目包含「知总数求部分」和「知部分求总数」。',
+    '每次刷新题目会随机出现两种版式：「上合下分」（总数在上）和「上分下合」（部分数在上）。'
+  ];
+  document.getElementById('ruleList').innerHTML = rules.map(rule => `<li>${rule}</li>`).join('');
+  document.getElementById('maskRule').classList.add('show');
+};
+document.getElementById('closeRule').onclick = () => document.getElementById('maskRule').classList.remove('show');
+document.getElementById('closeWin').onclick = () => document.getElementById('maskWin').classList.remove('show');
+document.getElementById('againWin').onclick = () => { document.getElementById('maskWin').classList.remove('show'); resetAll(); };
+document.getElementById('btnReset').onclick = () => resetAll();
+document.querySelectorAll('#diff span').forEach(s => {
+  s.onclick = () => {
+    document.querySelectorAll('#diff span').forEach(x => x.classList.remove('on'));
+    s.classList.add('on'); MAXN = +s.dataset.max;
+    if (MODE === 'custom') customQ = null;
+    resetAll();
+    if (MODE === 'custom') openCustom();
+  };
+});
+function resetAll() {
+  finished = false;
+  usedQKeys.clear();
+  GROUPS.forEach(g => {
+    if (qTimers.has(g)) clearTimeout(qTimers.get(g));
+    g.progress = 0; g.done = false; g.lock = false;
+    g.scEl.innerHTML = `0<small>/10</small>`; g.runEl.style.left = START + 'px';
+    resetGroup(g);
+  });
+  if (MODE === 'challenge') startTimer(CHALLENGE_SEC); else stopTimer();
+}
+
+/* ---------------- 音效 ---------------- */
+let sndOn = true, ac = null;
+document.getElementById('btnSound').onclick = e => {
+  sndOn = !sndOn; e.currentTarget.textContent = sndOn ? '🔊 音效' : '🔇 静音';
+};
+function beep(ok) {
+  if (!sndOn) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = ok ? [660, 880] : [220, 165];
+    notes.forEach((f, i) => {
+      const o = ac.createOscillator(), gn = ac.createGain();
+      o.type = ok ? 'triangle' : 'sawtooth';
+      o.frequency.value = f;
+      gn.gain.setValueAtTime(0.0001, ac.currentTime + i * 0.12);
+      gn.gain.exponentialRampToValueAtTime(0.18, ac.currentTime + i * 0.12 + 0.02);
+      gn.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + i * 0.12 + 0.16);
+      o.connect(gn).connect(ac.destination);
+      o.start(ac.currentTime + i * 0.12); o.stop(ac.currentTime + i * 0.12 + 0.2);
+    });
+  } catch (e) {}
+}
+
+/* ---------------- 学习分类切换 + 拼音表 ---------------- */
+const maskChart = document.getElementById('chartMask');
+function buildChart() {
+  const card = (big, small, say, cls) =>
+    `<div class="c-card ${cls || ''}" data-say="${say}"><b>${big}</b><span>${small}</span></div>`;
+  let html = '<h4>声母（23 个 · 点击听呼读音）</h4><div class="c-grid">'
+    + SM_LIST.map(([s, c]) => card(s, c, c)).join('') + '</div>';
+  YM_GROUPS.forEach(([name, arr]) => {
+    html += `<h4>${name}</h4><div class="c-grid">`
+      + arr.map(([y, c]) => card(y, c, c)).join('') + '</div>';
+  });
+  html += '<h4>四声练习（m + a · 点击听读音）</h4><div class="c-grid">'
+    + [['妈','mā · 第一声',1],['麻','má · 第二声',2],['马','mǎ · 第三声',3],['骂','mà · 第四声',4]]
+        .map(([c, d]) => card(c, d, c, 'tone')).join('') + '</div>';
+  html += '<h4>常用字点读表（一年级）</h4><div class="c-grid">'
+    + CHARS.map(x => card(x.c, x.p, x.c, 'zi')).join('') + '</div>';
+  document.getElementById('chartBody').innerHTML = html;
+}
+buildChart();
+document.getElementById('btnChart').onclick = () => maskChart.classList.add('show');
+document.getElementById('chartClose').onclick = () => maskChart.classList.remove('show');
+document.getElementById('chartFs').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+};
+maskChart.addEventListener('click', e => {
+  const t = e.target.closest('[data-say]');
+  if (t) speak(t.dataset.say);
+});
+
+const subjectSel = document.getElementById('subjectSel');
+subjectSel.onchange = () => setSubject(subjectSel.value);
+/* 让下拉框与当前科目+模式保持一致（拼音-分与合页签 ↔ 拼音·分与合选项 双向联动） */
+function syncSubjSel() {
+  subjectSel.value = (SUBJECT === 'pinyin' && MODE === 'pyblend') ? 'pinyin-blend' : SUBJECT;
+}
+function setSubject(s) {
+  const blend = s === 'pinyin-blend';
+  if (blend) s = 'pinyin';
+  SUBJECT = s;
+  customQ = null;
+  document.getElementById('diff').style.display = s === 'pinyin' ? 'none' : 'flex';
+  document.querySelector('.tab[data-mode="custom"]').style.display = s === 'pinyin' ? 'none' : '';
+  document.querySelector('.tab[data-mode="pyblend"]').style.display = s === 'pinyin' ? '' : 'none';
+  document.getElementById('btnChart').style.display = s === 'pinyin' ? 'flex' : 'none';
+  if (blend)                                                        MODE = 'pyblend';
+  else if (s === 'pinyin' && (MODE === 'custom' || MODE === 'pyblend')) MODE = 'practice';
+  else if (s === 'math' && MODE === 'pyblend')                      MODE = 'practice';
+  syncTabs();
+  bannerEl.innerHTML = bannerFor(MODE);
+  syncSubjSel();
+  resetAll();
+}
+
+/* ---------------- 启动 ---------------- */
+loadAvatars();
+GROUPS.forEach(paintAvatar);
+GROUPS.forEach(resetGroup);
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>田径大赛 · 分与合 + 拼音练习</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+    background: linear-gradient(180deg, #FFEFD5 0%, #FFD9C0 40%, #C9B8F5 100%);
+  }
+  .wrap { width: 100%; max-width: 480px; text-align: center; }
+  h1 { font-size: 26px; color: #FF6B35; letter-spacing: 1px; margin-bottom: 6px; }
+  .sub { font-size: 14px; color: #7C8B9B; font-weight: 700; margin-bottom: 26px; }
+  a.card {
+    display: block; background: #fff; border-radius: 20px; padding: 22px 20px; margin-bottom: 16px;
+    text-decoration: none; box-shadow: 0 8px 22px rgba(40,70,110,.14); border: 2.5px solid #E9F0F7;
+    transition: transform .15s, box-shadow .15s;
+  }
+  a.card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(40,70,110,.18); }
+  a.card:active { transform: scale(.98); }
+  .card .ico { font-size: 34px; }
+  .card .t { font-size: 19px; font-weight: 900; color: #2C3A4B; margin: 6px 0 4px; }
+  .card .d { font-size: 13px; color: #8B9AAB; font-weight: 600; line-height: 1.6; }
+  .card.pc .t { color: #4CA7FF; }
+  .card.h5 .t { color: #FF6B35; }
+  .tag {
+    display: inline-block; margin-top: 8px; padding: 4px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 800; color: #fff;
+  }
+  .pc .tag { background: linear-gradient(135deg,#5BA8FF,#4CA7FF); }
+  .h5 .tag { background: linear-gradient(135deg,#FF9E4F,#FF6B35); }
+  .foot { margin-top: 18px; font-size: 12px; color: #93A2B3; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏃 田径大赛</h1>
+  <div class="sub">数学分与合 · 拼音点读 · 拼音-分与合</div>
+
+  <a class="card h5" href="h5.html">
+    <div class="ico">📱</div>
+    <div class="t">H5 手机版</div>
+    <div class="d">竖屏自适应，手机/平板直接玩<br>4 个小组轮流答题</div>
+    <div class="tag">推荐手机打开</div>
+  </a>
+
+  <a class="card pc" href="pc.html">
+    <div class="ico">🖥️</div>
+    <div class="t">电脑白板版</div>
+    <div class="d">1920×1080 全屏设计，适合教室投影<br>4 个小组同时答题比赛</div>
+    <div class="tag">推荐电脑/白板打开</div>
+  </a>
+
+  <div class="foot">练习模式 / 限时挑战 / 自定义出题 · 点读发音需在 Chrome / Edge / Safari 中打开</div>
+</div>
+</body>
+</html>
