@@ -5,13 +5,14 @@ H5 / PC 共用的拼音标准发音文件。页面通过 `audio/sm/*.mp3`、`aud
 ## 文件说明
 
 - `sm/`：23 个声母（b p m f d t n l g k h j q x zh ch sh r z c s y w）。
-- `ym/`：35 个韵母。文件名 `v.mp3` / `ve.mp3` / `vn.mp3` / `van.mp3` 分别对应 ü / üe / ün / üan。
+- `ym/`：35 个韵母。文件名 `v.mp3` / `ve.mp3` / `vn.mp3` / `van.mp3` 分别对应 ü / üe / ün / üan。其中 `o.mp3` 使用纯单韵母 o 的录音，避免读成 wo。
 - `tone/`：35 个韵母的四声录音，文件名 `<韵母><声调>.mp3`，例如 `un1.mp3` 是 un 的第一声（wēn）。ü 系列仍用 `v` 表示，即 `v1`–`v4`、`ve1`–`ve4`、`vn1`–`vn4`、`van1`–`van4`。声调卡播放这一组录音，不再用“村”这类带其他声母的汉字代读。
 - `char/`：整音节录音，文件名是数字声调拼音，例如 `ma1.mp3`（妈，mā）、`nv3.mp3`（女，nǚ）、`lve4.mp3`（掠，lüè）。当前 300 字字库用到其中 268 个；目录里也保留了扩展字库的录音，便于后续加字。拼写练习点“确定”答对后、点击题目中的汉字或“拼一拼”时播放这一组录音，与声调卡同源，避免浏览器语音合成音色不一致、发音过短。
 
 ## 来源与许可
 
-- 声母 23 个 + 标准韵母 24 个：来自 [vaebe/pinyin-audio](https://github.com/vaebe/pinyin-audio)，该仓库在 `package.json` 中声明 ISC License。
+- 声母 23 个 + 标准韵母 23 个：来自 [vaebe/pinyin-audio](https://github.com/vaebe/pinyin-audio)，该仓库在 `package.json` 中声明 ISC License。
+- `ym/o.mp3`：单韵母 o 改用 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio) 的 `o1.mp3`，修正原先被读成 wo 的问题；其余标准韵母仍来自 vaebe。
 - 组合韵母 ua、uo、ian、iao、uan、iang、uang：来自 [davinfifield/mp3-chinese-pinyin-sound](https://github.com/davinfifield/mp3-chinese-pinyin-sound)，Unlicense（公有领域）；使用零声母音节 wa / wo / yan / yao / wan / yang / wang 的第一声录音。
 - `tone/` 中 35 个韵母的四声：来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio)（仓库 README 注明音频供教育及非商业用途使用），使用其中的零声母音节录音，例如 un 用 wen1–wen4、ui 用 wei1–wei4、ü 用 yu1–yu4。新增的 ia、uai、iong、üan 分别使用 ya1–ya4、wai1–wai4、yong1–yong4、yuan1–yuan4；对应的 `ym/ia.mp3`、`ym/uai.mp3`、`ym/iong.mp3`、`ym/van.mp3` 取各自第一声录音。
 - `char/` 中的整音节录音同样来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio) 的 `dist/<数字声调拼音>.mp3`，与声调卡使用同一套录音库；文件仅去除 ID3 元数据，音频内容未修改。
