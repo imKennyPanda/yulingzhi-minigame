@@ -111,15 +111,15 @@
   .ntext.q { fill: #FFA8D2; font-size: 32px; }
   .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
   .flip-toggle.flip-btn {
-    position: absolute; right: 0; bottom: -24px; display: inline-flex; align-items: center; gap: 7px;
-    height: 42px; padding: 0 13px 0 17px; border-radius: 21px; border: 2.5px solid #FFD9A8;
-    background: #FFF6E6; color: #C77A00; font: inherit; font-size: 20px; font-weight: 800; line-height: 1;
+    position: absolute; right: 0; bottom: -19px; display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 10px 0 14px; border-radius: 17px; border: 2px solid #FFD9A8;
+    background: #FFF6E6; color: #C77A00; font: inherit; font-size: 16px; font-weight: 800; line-height: 1;
     cursor: pointer; box-shadow: 0 3px 8px rgba(199,122,0,.16);
   }
   .flip-toggle.flip-btn:hover { background: #FFE7C2; }
   .flip-toggle.flip-btn:active { transform: scale(.96); }
   .flip-toggle.flip-btn:disabled { opacity: .45; cursor: default; transform: none; }
-  .qbox .flip-btn svg { width: 21px; height: 21px; max-width: none; flex: none; display: block; }
+  .qbox .flip-btn svg { width: 17px; height: 17px; max-width: none; flex: none; display: block; }
 
   /* 拼音题图（听音辨字） */
   .py-wrap { display: flex; flex-direction: column; align-items: center; gap: 9px; width: 100%; }
@@ -237,7 +237,7 @@
   }
   .help-mask.show { opacity: 1; pointer-events: auto; }
   .help-drawer {
-    position: absolute; left: 50%; bottom: 0; width: min(680px, 100%); max-height: 90vh;
+    position: absolute; left: 50%; bottom: 0; width: min(760px, 100%); max-height: 90vh;
     transform: translate(-50%, 105%); background: #fff; border-radius: 24px 24px 0 0;
     box-shadow: 0 -14px 44px rgba(40,70,110,.28); transition: transform .28s cubic-bezier(.3,1.1,.5,1);
     display: flex; flex-direction: column; overflow: hidden;
@@ -250,12 +250,12 @@
     font-size: 16px; font-weight: 800; cursor: pointer; display: grid; place-items: center;
   }
   .help-tip { padding: 0 16px 9px; font-size: 13px; font-weight: 700; color: #8A7A9C; text-align: center; line-height: 1.5; }
-  .help-body { overflow: auto; padding: 0 10px 8px; }
-  /* 左：原题图；右：拖拽操作面板 */
-  .help-main { display: flex; gap: 9px; align-items: stretch; }
+  .help-body { overflow: auto; padding: 0 4px 8px; }
+  /* 左：原题图；右：拖拽操作面板。原题放到约占一半宽，窄屏也保留足够的操作区 */
+  .help-main { display: flex; gap: 5px; align-items: stretch; }
   .help-question {
-    flex: 0 0 30%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 9px 6px; border: 2px solid #F0E0C8; border-radius: 16px;
+    flex: 0 0 50%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 7px 4px; border: 2px solid #F0E0C8; border-radius: 16px;
     background: linear-gradient(180deg, #FFFDF7, #FFF5E4);
   }
   .help-question-label { font-size: 11px; font-weight: 800; color: #B49A6E; letter-spacing: 1px; margin-bottom: 3px; }
@@ -263,14 +263,14 @@
   .help-question-img svg { width: 100%; height: auto; display: block; }
   .help-question-img .flip-toggle { pointer-events: none; cursor: default; }
   .help-panel { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
-  .help-total .help-zone { min-height: 94px; }
+  .help-total .help-zone { min-height: 110px; }
   .help-total.before { margin-bottom: 8px; }
   .help-total.after { margin-top: 8px; }
-  .help-jars { display: flex; gap: 8px; flex: 1; }
-  .help-jars .help-zone { flex: 1; min-height: 146px; }
+  .help-jars { display: flex; gap: 4px; flex: 1; }
+  .help-jars .help-zone { flex: 1; min-height: 170px; }
   .help-zone {
     position: relative; border: 2.5px dashed #E3D5EE; border-radius: 16px; background: #FCF8FE;
-    padding: 8px 8px 9px; transition: border-color .15s, background .15s;
+    padding: 3px 3px 4px; transition: border-color .15s, background .15s;
   }
   .help-zone.drop-hover { border-color: #FF85BD; background: #FFF2F9; }
   .help-zone.solved { border-color: #45D6A0; background: #F0FFF8; }
@@ -282,16 +282,21 @@
     content: ''; position: absolute; left: 12%; right: 12%; top: -7px; height: 11px;
     border-radius: 7px 7px 3px 3px; background: #CFE8D8; border: 2px solid #B7D8C5;
   }
-  .help-zone-head { display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px; min-height: 24px; }
+  .help-zone-head { display: flex; align-items: baseline; gap: 4px; margin-bottom: 5px; min-height: 26px; }
   .help-zone-head b { font-size: 22px; font-weight: 900; color: #FF6FAE; line-height: 1; }
-  .help-zone-head span { font-size: 10.5px; font-weight: 700; color: #A090B2; white-space: nowrap; }
+  .help-zone-head span { font-size: 14px; font-weight: 700; color: #A090B2; white-space: nowrap; }
   .help-zone.unknown .help-zone-head b { color: #B4A6C4; }
-  .help-carrots { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3px; min-height: 38px; }
-  .help-carrot { width: 33px; height: 40px; cursor: grab; touch-action: none; user-select: none; flex: none; }
+  .help-carrots { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 2px; min-height: 52px; }
+  .help-carrot { position: relative; width: 43px; height: 52px; cursor: grab; touch-action: none; user-select: none; flex: none; }
   .help-carrot svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .help-carrot-num {
+    position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%);
+    font-size: 15px; font-weight: 900; color: #fff; line-height: 1;
+    text-shadow: 0 1px 2px rgba(120,30,10,.55); pointer-events: none;
+  }
   .help-carrot.dragging { opacity: .3; }
   .help-carrot-ghost {
-    position: fixed; width: 37px; height: 45px; z-index: 500; pointer-events: none;
+    position: fixed; width: 48px; height: 58px; z-index: 500; pointer-events: none;
     transform: translate(-50%, -50%); filter: drop-shadow(0 4px 6px rgba(0,0,0,.25));
   }
   .help-foot { display: flex; gap: 10px; padding: 9px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 2px solid #F5EAF9; }
@@ -1791,6 +1796,7 @@ const HELP_SIDE = ['left', 'right'];
 let helpGroup = null;
 let helpState = { top: 0, left: 0, right: 0 };
 let helpDrag = null;
+let helpMoved = false;                 // 挪动过红萝卜后，萝卜中间显示序号
 
 function helpModeOf(q) { return q.top !== null ? 'fen' : 'he'; }
 function helpOpenState(g) {
@@ -1811,7 +1817,9 @@ function helpSolved() {
   return helpState.left === 0 && helpState.right === 0 && helpState.top === q.answer;
 }
 function carrotHTML(n, zone) {
-  return Array.from({ length: n }, () => `<div class="help-carrot" data-zone="${zone}">${CARROT_SVG}</div>`).join('');
+  return Array.from({ length: n }, (_, i) =>
+    `<div class="help-carrot" data-zone="${zone}">${CARROT_SVG}${helpMoved ? `<span class="help-carrot-num">${i + 1}</span>` : ''}</div>`
+  ).join('');
 }
 function renderHelp() {
   if (!helpGroup) return;
@@ -1836,7 +1844,7 @@ function renderHelp() {
     leftZone = knownSide === 'left' ? knownJar : unknownJar;
     rightZone = knownSide === 'left' ? unknownJar : knownJar;
   } else {
-    topZone = zone('top', '?', '一共几个？');
+    topZone = zone('top', '?', '一共有几个？');
     // 罐子上的数字始终对应原题，拖走胡萝卜后也不变
     leftZone = zone('left', q.parts[0], '左边');
     rightZone = zone('right', q.parts[1], '右边');
@@ -1857,7 +1865,7 @@ function renderHelp() {
   const totalPos = q.flip ? '下面' : '上面';
   helpTipEl.textContent = mode === 'fen'
     ? `把${totalPos}的 ${q.top} 个红萝卜拖进罐子：${sideName(knownSide)}放 ${knownVal} 个，${sideName(otherSide)}放剩下的。`
-    : `把两个罐子里的红萝卜都拖到${totalPos}，数一数一共几个。`;
+    : `把两个罐子里的红萝卜都拖到${totalPos}，数一数一共有几个。`;
 }
 function helpZoneAt(x, y) {
   const el = document.elementFromPoint(x, y);
@@ -1877,7 +1885,8 @@ function helpPointerDown(e) {
   e.preventDefault();
   const ghost = document.createElement('div');
   ghost.className = 'help-carrot-ghost';
-  ghost.innerHTML = CARROT_SVG;
+  const idx = Array.from(c.parentNode.children).indexOf(c) + 1;
+  ghost.innerHTML = CARROT_SVG + (helpMoved ? `<span class="help-carrot-num">${idx}</span>` : '');
   document.body.appendChild(ghost);
   helpDrag = { zone, ghost, src: c };
   c.classList.add('dragging');
@@ -1909,6 +1918,7 @@ function helpPointerUp(e) {
   if (to === drag.zone || !helpState[drag.zone]) { renderHelp(); return; }
   helpState[drag.zone]--;
   helpState[to]++;
+  helpMoved = true;                    // 第一次挪动后，萝卜中间显示数字方便清点
   if (helpSolved()) beep(true);
   renderHelp();
 }
@@ -1916,6 +1926,7 @@ function openHelp(g) {
   if (!g || !g.q || g.q.kind || g.done || g.lock || finished) return;
   helpGroup = g;
   helpState = helpOpenState(g);
+  helpMoved = false;
   helpMask.classList.add('show');
   document.body.classList.add('help-open');
   renderHelp();
@@ -1935,6 +1946,7 @@ document.getElementById('helpDone').onclick = closeHelp;
 document.getElementById('helpReset').onclick = () => {
   if (!helpGroup) return;
   helpState = helpOpenState(helpGroup);
+  helpMoved = false;
   renderHelp();
 };
 helpMask.addEventListener('click', e => { if (e.target === helpMask) closeHelp(); });
