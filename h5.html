@@ -969,6 +969,8 @@ const CHARS = [
   ['太','tài','t','ai',4],
   ['齿','chǐ','ch','i',3],
 ].map(([c, p, sm, ym, t]) => ({ c, p, sm, ym, t }));
+// 认字练习点选项时要读该选项的字，按字反查拼音（字库内汉字不重复）
+const CHAR_PINYIN = Object.fromEntries(CHARS.map(x => [x.c, x.p]));
 
 /* ---------------- 语音点读 ---------------- */
 let zhVoice = null;
@@ -1436,7 +1438,13 @@ function renderPad(g) {
       const k = document.createElement('div');
       k.className = 'key charKey' + (g.pick === ch ? ' sel' : '');
       k.textContent = ch;
-      k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = ch; render(g); };
+      k.onclick = () => {
+        if (g.done || g.lock || finished) return;
+        // 点任意选项（含错误项）都先读一遍该字，帮助巩固；最后答对时还会再读整字
+        const py = CHAR_PINYIN[ch];
+        if (py) playCharSound(py, ch);
+        g.pick = ch; render(g);
+      };
       g.padEl.appendChild(k);
     });
     return;
