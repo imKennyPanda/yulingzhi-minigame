@@ -1321,10 +1321,12 @@ function pinyinDiagram(q, pick) {
   // 声调只标在完整韵母上（如 ua → uā、iao → iǎo、uang → uāng），
   // 不再单独显示介母或复韵母的第一个韵母。
   const toneSay = (YM_TONE_SAY[q.ym] && YM_TONE_SAY[q.ym][q.tone - 1]) || TONE_NAME[q.tone];
-  const toneYm = (q.ym[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(q.sm))
-    ? 'u' + q.ym.slice(1) : q.ym;
-  // “韵母”按钮：声音和拼音与原来的“声调”按钮一致（带调韵母 + 声调录音）
-  const toneBox = `<div class="py-box py-tone" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneFinal(toneYm, q.tone)}</b><span>韵母 · 点击听</span></div>`;
+  // j/q/x/y 后的 ü 保留两点、ü 本身不标声调：
+  // ü、ün 只显示不带调韵母；üe、üan 的声调本来在 e、a 上，仍正常显示。
+  const juU = ['j', 'q', 'x', 'y'].includes(q.sm) && q.ym[0] === 'ü';
+  const toneText = juU && (q.ym === 'ü' || q.ym === 'ün') ? q.ym : toneFinal(q.ym, q.tone);
+  // “韵母”按钮：带 ü 的韵母仍用 ü 的录音（v/ve/vn/van），不会读成 u
+  const toneBox = `<div class="py-box py-tone" data-say="${toneSay}，${TONE_NAME[q.tone]}" data-kind="tone" data-key="${q.tone}" data-ym="${q.ym}"><b>${toneText}</b><span>韵母 · 点击听</span></div>`;
   // 原来的“声调”按钮：改成这个字的完整拼音，点击读整字
   const fullBox = `<div class="py-box py-full" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}"><b>${q.pinyin}</b><span>完整拼音 · 点击听</span></div>`;
   return `<div class="py-wrap">
