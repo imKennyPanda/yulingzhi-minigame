@@ -1,0 +1,29 @@
+# 拼音点读音频
+
+H5 / PC 共用的拼音标准发音文件。页面通过 `audio/sm/*.mp3`、`audio/ym/*.mp3`、`audio/tone/*.mp3` 播放；文件缺失或浏览器无法播放时，会自动回退到系统语音合成。
+
+## 文件说明
+
+- `sm/`：23 个声母（b p m f d t n l g k h j q x zh ch sh r z c s y w）。
+- `ym/`：31 个韵母。文件名 `v.mp3` / `ve.mp3` / `vn.mp3` 分别对应 ü / üe / ün。
+- `tone/`：韵母四声录音，文件名 `<韵母><声调>.mp3`，例如 `un1.mp3` 是 un 的第一声（wēn）。ü 仍用 `v` 表示，即 `v1`–`v4`、`ve1`–`ve4`、`vn1`–`vn4`。声调卡播放这一组录音，不再用“村”这类带其他声母的汉字代读。
+
+## 来源与许可
+
+- 声母 23 个 + 标准韵母 24 个：来自 [vaebe/pinyin-audio](https://github.com/vaebe/pinyin-audio)，该仓库在 `package.json` 中声明 ISC License。
+- 组合韵母 ua、uo、ian、iao、uan、iang、uang：来自 [davinfifield/mp3-chinese-pinyin-sound](https://github.com/davinfifield/mp3-chinese-pinyin-sound)，Unlicense（公有领域）；使用零声母音节 wa / wo / yan / yao / wan / yang / wang 的第一声录音。
+- `tone/` 中 30 个韵母的四声：来自 [hanziguru/pinyin-audio](https://github.com/hanziguru/pinyin-audio)（仓库 README 注明音频供教育及非商业用途使用），使用其中的零声母音节录音，例如 un 用 wen1–wen4、ui 用 wei1–wei4、ü 用 yu1–yu4。
+- `tone/ong1.mp3`、`tone/ong3.mp3`、`tone/ong4.mp3`：来自 [vibrantbyte/resources](https://gitee.com/vibrantbyte/resources) 的韵母四声录音，仓库为 Apache-2.0 License。ong 没有零声母音节，因此直接使用韵母录音。
+- `tone/ong2.mp3`：上述韵母录音缺少 ong 的第二声，暂用 hanziguru 的 `tong2`（同，tóng），保留 ong 韵母和正确声调。
+- 音频文件仅重命名和整理，未修改音频内容。
+
+## 许可文本
+
+- ISC：见 `LICENSE-isc.txt`
+- Unlicense：见 `LICENSE-unlicense.txt`
+- Apache-2.0：见 `LICENSE-apache.txt`
+- hanziguru/pinyin-audio 未附正式许可证文件，使用条款见其 [README](https://github.com/hanziguru/pinyin-audio#readme)。
+
+## 备注
+
+国家中小学智慧教育平台目前没有提供单个声母/韵母 MP3 的直接下载入口（需登录或抓取媒体流），因此这里采用上述开放许可的标准拼音录音。如需替换为平台素材，保持文件名不变直接覆盖即可。

@@ -135,7 +135,7 @@
   /* ============ 答题台 ============ */
   .stations {
     flex: none; height: 470px; background: linear-gradient(180deg, #FCF7FE, #F9F2FC);
-    padding: 18px 60px 26px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px;
+    padding: 18px 60px 26px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px;
     border-top: 3px solid #EFE4F6;
   }
   .station {
@@ -167,8 +167,13 @@
   .ntext.ans { fill: #FF6FAE; }
   .ntext.q { fill: #FFA8D2; font-size: 32px; }
   .link { stroke: #CFC2DD; stroke-width: 3.5; fill: none; stroke-linecap: round; }
+  .flip-toggle { cursor: pointer; }
+  .flip-toggle:hover rect { fill: #FFE7C2; }
+  .flip-toggle:active { opacity: .7; }
 
   .pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .pad.compact { grid-template-columns: repeat(10, 1fr); gap: 5px; }
+  .pad.compact .key { height: 40px; font-size: 19px; border-radius: 9px; }
   .key {
     height: 50px; border-radius: 12px; background: #FBF6FD; border: 2px solid #EFE4F6; color: #4A3E5C;
     font-size: 24px; font-weight: 800; cursor: pointer; transition: .12s; display: grid; place-items: center;
@@ -186,6 +191,9 @@
     box-shadow: 0 5px 12px rgba(255,107,53,.32); }
   .btn.go:disabled { background: #F2E8F7; border-color: #EFE4F6; color: #B9ABC7; box-shadow: none; cursor: not-allowed; }
   .btn.go:not(:disabled):hover { filter: brightness(1.05); }
+  .btn.help { background: #FFF8E8; border-color: #FFD59A; color: #C77A00; }
+  .btn.help:hover { background: #FFF1D6; border-color: #FFC26A; }
+  .btn.help:disabled { opacity: .45; cursor: not-allowed; }
 
   /* ============ 弹窗 ============ */
   .mask {
@@ -233,6 +241,72 @@
   .tip { margin-top: 16px; font-size: 15px; color: #9A8AAB; text-align: center; line-height: 1.7; }
   .tip.err { color: #FF6B8B; font-weight: 700; }
 
+  /* ============ 分与合帮助抽屉 ============ */
+  .help-mask {
+    position: absolute; inset: 0; z-index: 40; background: rgba(20,32,46,.5);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s; backdrop-filter: blur(2px);
+  }
+  .help-mask.show { opacity: 1; pointer-events: auto; }
+  .help-drawer {
+    width: 1180px; max-height: 880px; transform: translateY(105%);
+    transition: transform .3s cubic-bezier(.3,1.1,.5,1); background: #fff; border-radius: 30px 30px 0 0;
+    box-shadow: 0 -24px 70px rgba(0,0,0,.35); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .help-mask.show .help-drawer { transform: translateY(0); }
+  .help-head { display: flex; align-items: center; gap: 16px; padding: 20px 34px 8px; }
+  .help-title { font-size: 30px; font-weight: 900; color: #3D3350; margin-right: auto; }
+  .help-close {
+    width: 52px; height: 52px; border-radius: 50%; border: none; background: #F7F0FB; color: #74648A;
+    font-size: 24px; font-weight: 800; cursor: pointer; display: grid; place-items: center;
+  }
+  .help-tip { padding: 0 34px 12px; font-size: 19px; font-weight: 700; color: #8A7A9C; text-align: center; }
+  .help-body { overflow: auto; padding: 0 34px 8px; }
+  /* 左：原题图；右：拖拽操作面板 */
+  .help-main { display: flex; gap: 28px; align-items: stretch; }
+  .help-question {
+    flex: 0 0 360px; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 18px 14px; border: 3px solid #F0E0C8; border-radius: 22px;
+    background: linear-gradient(180deg, #FFFDF7, #FFF5E4);
+  }
+  .help-question-label { font-size: 17px; font-weight: 800; color: #B49A6E; letter-spacing: 2px; margin-bottom: 8px; }
+  .help-question-img { width: 100%; }
+  .help-question-img svg { width: 100%; height: auto; display: block; }
+  .help-question-img .flip-toggle { pointer-events: none; cursor: default; }
+  .help-panel { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  .help-top { margin-bottom: 16px; }
+  .help-top .help-zone { min-height: 150px; }
+  .help-jars { display: flex; gap: 18px; flex: 1; }
+  .help-jars .help-zone { flex: 1; min-height: 250px; }
+  .help-zone {
+    position: relative; border: 4px dashed #E3D5EE; border-radius: 24px; background: #FCF8FE;
+    padding: 16px 18px 18px; transition: border-color .15s, background .15s;
+  }
+  .help-zone.drop-hover { border-color: #FF85BD; background: #FFF2F9; }
+  .help-zone.solved { border-color: #45D6A0; background: #F0FFF8; }
+  .help-jars .help-zone {
+    border-style: solid; border-color: #E8D9B8;
+    background: linear-gradient(180deg, #FFFDF5, #FFF4D8);
+  }
+  .help-jars .help-zone::before {
+    content: ''; position: absolute; left: 12%; right: 12%; top: -11px; height: 18px;
+    border-radius: 10px 10px 4px 4px; background: #CFE8D8; border: 3px solid #B7D8C5;
+  }
+  .help-zone-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; min-height: 44px; }
+  .help-zone-head b { font-size: 46px; font-weight: 900; color: #FF6FAE; line-height: 1; }
+  .help-zone-head span { font-size: 18px; font-weight: 700; color: #A090B2; white-space: nowrap; }
+  .help-zone.unknown .help-zone-head b { color: #B4A6C4; }
+  .help-carrots { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 9px; min-height: 76px; }
+  .help-carrot { width: 58px; height: 72px; cursor: grab; touch-action: none; user-select: none; flex: none; }
+  .help-carrot svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .help-carrot.dragging { opacity: .3; }
+  .help-carrot-ghost {
+    position: absolute; width: 66px; height: 82px; z-index: 60; pointer-events: none;
+    transform: translate(-50%, -50%); filter: drop-shadow(0 6px 8px rgba(0,0,0,.28));
+  }
+  .help-foot { display: flex; justify-content: flex-end; gap: 16px; padding: 14px 34px 24px; border-top: 3px solid #F5EAF9; }
+  .help-foot .mbtn { min-width: 190px; }
+
   /* 学习分类选择器 */
   .subj-sel {
     height: 38px; padding: 0 12px; border-radius: 10px; border: 1.5px solid #EFE4F6;
@@ -257,6 +331,8 @@
   }
   .py-blend:hover { filter: brightness(1.07); }
   .key.charKey { font-size: 30px; }
+  .key.toneKey { font-size: 20px; letter-spacing: .5px; line-height: 1.1; row-gap: 1px; }
+  .key.toneKey b { font-size: 24px; letter-spacing: .5px; }
 
   /* 拼音-分与合 题图 */
   .pyb-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -269,8 +345,15 @@
   .pyb-top b { font-size: 27px; font-weight: 800; color: #FF6FAE; letter-spacing: 1px; }
   .pyb-top i { font-style: normal; font-size: 30px; font-weight: 800; color: #4A3E5C; }
   .pyb-top span { font-size: 12px; color: #B07A9E; font-weight: 700; }
-  .pyb-links { width: 240px; height: 22px; margin: 2px 0; }
-  .qbox svg.pyb-links { width: 240px; height: 22px; margin: 2px 0; }   /* 覆盖 .qbox svg 的 166px 通配高度 */
+  .pyb-top .pyb-side { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .pyb-py.is-hidden { display: none; }
+  .pyb-eye { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 18px; color: #B07A9E; cursor: pointer; }
+  .pyb-eye:hover { color: #FF6FAE; }
+  .qbox .pyb-eye svg { width: 18px; height: 18px; }
+  .pyb-links { width: 328px; height: 22px; margin: 2px 0; }
+  .qbox svg.pyb-links { width: 328px; height: 22px; margin: 2px 0; }   /* 覆盖 .qbox svg 的 166px 通配高度 */
+  .pyb-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .pyb-sec.wide { grid-column: 1 / -1; }
   .pyb-row { display: flex; gap: 26px; }
   .pyb-slot {
     min-width: 92px; padding: 4px 0 4px; border-radius: 14px; text-align: center;
@@ -341,14 +424,13 @@
         <div class="logo">数</div>
         <select class="subj-sel" id="subjectSel">
           <option value="math">数学 · 分与合</option>
-          <option value="pinyin">拼音 · 点读练习</option>
-          <option value="pinyin-blend">拼音 · 分与合</option>
+          <option value="pinyin">拼音 · 认字练习</option>
+          <option value="pinyin-blend">拼音 · 拼写练习</option>
         </select>
       </div>
       <div class="tabs" id="tabs">
         <div class="tab on" data-mode="practice">练习</div>
         <div class="tab" data-mode="challenge">挑战</div>
-        <div class="tab" data-mode="pyblend" style="display:none">拼音-分与合</div>
         <div class="tab" data-mode="custom">自定义</div>
       </div>
       <div class="title">分与合田径大赛</div>
@@ -387,11 +469,11 @@
       <div class="modal" style="width:660px">
         <h3>自定义出题</h3>
         <div class="cq">
-          <div class="cq-row"><label>总 数</label><input id="cqTop" type="number" min="0" max="10" placeholder="留空=要填"></div>
-          <div class="cq-row"><label>部分 ①</label><input id="cqA" type="number" min="0" max="10" placeholder="留空=要填"></div>
-          <div class="cq-row"><label>部分 ②</label><input id="cqB" type="number" min="0" max="10" placeholder="留空=要填"></div>
+          <div class="cq-row"><label>总 数</label><input id="cqTop" type="number" min="1" max="20" placeholder="1–20"></div>
+          <div class="cq-row"><label>部分 ①</label><input id="cqA" type="number" min="0" max="20" placeholder="可留空"></div>
+          <div class="cq-row"><label>部分 ②</label><input id="cqB" type="number" min="0" max="20" placeholder="可留空"></div>
         </div>
-        <p class="tip" id="cqTip">把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。</p>
+        <p class="tip" id="cqTip">把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。<br>只填总数（如 9）也可：每道题随机生成 1+8、2+7……；三格都留空则使用系统题目。总数可填 1–20。</p>
         <div class="foot">
           <button class="mbtn ghost" id="cqCancel">取消</button>
           <button class="mbtn" id="cqApply">应用出题</button>
@@ -408,6 +490,22 @@
         <div class="foot">
           <button class="mbtn ghost" id="closeWin">继续观战</button>
           <button class="mbtn" id="againWin">再来一局</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分与合帮助抽屉 -->
+    <div class="help-mask" id="helpMask">
+      <div class="help-drawer">
+        <div class="help-head">
+          <div class="help-title">🥕 分与合小帮手</div>
+          <button class="help-close" id="helpClose" type="button" aria-label="关闭">✕</button>
+        </div>
+        <div class="help-tip" id="helpTip"></div>
+        <div class="help-body" id="helpBody"></div>
+        <div class="help-foot">
+          <button class="mbtn ghost" id="helpReset" type="button">重新摆放</button>
+          <button class="mbtn" id="helpDone" type="button">完成</button>
         </div>
       </div>
     </div>
@@ -439,10 +537,9 @@ window.addEventListener('resize', fit); fit();
 const ANIMALS = [
   { key:'kuromi', name:'库洛米', color:'#A98BFF', c1:'#E3D7FF', c2:'#CBB4FF' },
   { key:'egg',    name:'蛋仔',   color:'#F5A623', c1:'#FFEDB8', c2:'#FFD770' },
-  { key:'elsa',   name:'爱莎',   color:'#4FB8EE', c1:'#D5EEFF', c2:'#A9DBFF' },
   { key:'lotso',  name:'草莓熊', color:'#E4547E', c1:'#FFE3EC', c2:'#FFC2D6' }
 ];
-/* 卡通简化版角色：库洛米 / 蛋仔 / 爱莎公主 / 草莓熊 */
+/* 卡通简化版角色：库洛米 / 蛋仔 / 草莓熊 */
 function animalSVG(kind, n, color) {
   const badge = `<circle cx="50" cy="95" r="13" fill="${color}" stroke="#fff" stroke-width="2.5"/>
                  <text x="50" y="100" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${n}</text>`;
@@ -519,28 +616,6 @@ function animalSVG(kind, n, color) {
     </svg>`;
   }
 
-  // 爱莎公主
-  return `<svg viewBox="0 0 100 120">
-    ${base}
-    <path d="M30 108 C16 78 34 56 50 56 C66 56 84 78 70 108 Z" fill="#CFEBFF"/>
-    <path d="M32 110 C32 86 68 86 68 110 Z" fill="#A8DCFF"/>
-    <path d="M40 78 L60 78 L63 94 L37 94 Z" fill="#7FC4F0"/>
-    <rect x="45" y="67" width="10" height="13" fill="#FFE0CC"/>
-    <circle cx="50" cy="52" r="24" fill="#F7D98F"/>
-    <circle cx="50" cy="55" r="20" fill="#FFE0CC"/>
-    <path d="M30 50 a20 20 0 0 1 40 0 q-5 -12 -20 -12 q-15 0 -20 12 Z" fill="#F7D98F"/>
-    <path d="M66 60 C74 70 76 84 72 98" stroke="#F7D98F" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <path d="M68 68 l6 3 M70 78 l6 2 M71 88 l5 2" stroke="#E8C56A" stroke-width="2" stroke-linecap="round"/>
-    <path d="M42 30 L46 20 L50 28 L54 20 L58 30 Z" fill="#9FE0FF" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
-    <ellipse cx="43" cy="57" rx="3" ry="3.8" fill="#4A6FA8"/>
-    <ellipse cx="57" cy="57" rx="3" ry="3.8" fill="#4A6FA8"/>
-    <circle cx="44" cy="56" r="1" fill="#fff"/><circle cx="58" cy="56" r="1" fill="#fff"/>
-    <path d="M38 50 l3 -1.6 M62 50 l-3 -1.6" stroke="#E8C56A" stroke-width="2" stroke-linecap="round"/>
-    <path d="M46 64 q4 3 8 0" stroke="#E8A08F" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <circle cx="35" cy="63" r="3.4" fill="#FFB3D4" opacity=".8"/>
-    <circle cx="65" cy="63" r="3.4" fill="#FFB3D4" opacity=".8"/>
-    ${badge}
-  </svg>`;
 }
 
 let MAXN = 10;
@@ -562,13 +637,61 @@ const SM_SAY = Object.fromEntries(SM_LIST);
 const YM_GROUPS = [
   ['单韵母', [['a','啊'],['o','喔'],['e','鹅'],['i','衣'],['u','乌'],['ü','鱼']]],
   ['复韵母', [['ai','爱'],['ei','欸'],['ui','威'],['ao','奥'],['ou','欧'],['iu','优'],['ie','耶'],['üe','约'],['er','耳'],['ua','蛙'],['uo','窝']]],
-  ['鼻韵母', [['an','安'],['en','恩'],['in','因'],['un','温'],['ün','晕'],['ang','昂'],['eng','鹏'],['ing','星'],['ong','东']]],
-  ['组合韵母', [['ian','天'],['iao','鸟'],['uan','万'],['iang','羊'],['uang','窗']]]
+  ['鼻韵母', [['an','安'],['en','恩'],['in','因'],['un','温'],['ün','晕'],['ang','昂'],['eng','鞥'],['ing','英'],['ong','东']]],
+  ['组合韵母', [['ian','烟'],['iao','腰'],['uan','万'],['iang','羊'],['uang','汪']]]
 ];
 const YM_SAY = {};
 YM_GROUPS.forEach(([, arr]) => arr.forEach(([y, c]) => YM_SAY[y] = c));
+/* 韵母四声示范字（仅当本地录音加载失败时兜底）。
+   声调卡优先播放 audio/tone/<韵母><声调>.mp3 的纯韵母录音，不会再读出“村”这类带其他声母的字。
+   没有零声母音节的韵母（o、eng、ong 等）在兜底表里保留同韵母的示范字。 */
+const YM_TONE_SAY = {
+  'a':   ['妈','麻','马','骂'],
+  'o':   ['摸','摩','抹','末'],
+  'e':   ['婀','鹅','恶','饿'],
+  'i':   ['衣','姨','椅','意'],
+  'u':   ['乌','无','五','雾'],
+  'ü':   ['迂','鱼','雨','玉'],
+  'ai':  ['哀','挨','矮','爱'],
+  'ei':  ['飞','肥','匪','费'],
+  'ui':  ['威','围','伟','卫'],
+  'ao':  ['凹','熬','袄','奥'],
+  'ou':  ['抽','愁','丑','臭'],
+  'iu':  ['优','油','有','又'],
+  'ie':  ['耶','爷','也','叶'],
+  'üe':  ['靴','学','雪','月'],
+  'er':  ['儿','儿','耳','二'],   // er 的一声没有常用字，用二声代读
+  'ua':  ['挖','娃','瓦','袜'],
+  'uo':  ['多','夺','躲','剁'],
+  'an':  ['滩','谈','毯','探'],
+  'en':  ['分','坟','粉','份'],
+  'in':  ['因','银','引','印'],
+  'un':  ['温','文','稳','问'],
+  'ün':  ['晕','云','允','运'],
+  'ang': ['汤','糖','躺','烫'],
+  'eng': ['撑','成','逞','秤'],
+  'ing': ['英','营','影','硬'],
+  'ong': ['通','同','桶','痛'],
+  'ian': ['烟','严','眼','燕'],
+  'iao': ['腰','摇','咬','要'],
+  'uan': ['弯','玩','晚','万'],
+  'iang':['央','羊','养','样'],
+  'uang':['汪','王','网','忘']
+};
 const TONE_NAME = { 1: '第一声', 2: '第二声', 3: '第三声', 4: '第四声' };
 const TONE_MARK = { 1: 'ˉ', 2: 'ˊ', 3: 'ˇ', 4: 'ˋ' };
+/* 给韵母标声调：有 a/o/e 标在 a/o/e 上；iu、ui 标在后一个字母；其余标在单韵母上 */
+const TONE_VOWEL = { a: 'āáǎà', o: 'ōóǒò', e: 'ēéěè', i: 'īíǐì', u: 'ūúǔù', 'ü': 'ǖǘǚǜ' };
+function toneFinal(ym, tone) {
+  let i = -1;
+  for (const v of ['a', 'o', 'e']) { i = ym.indexOf(v); if (i >= 0) break; }
+  if (i < 0) {
+    if (ym === 'iu' || ym === 'ui') i = 1;
+    else i = [...ym].findIndex(ch => TONE_VOWEL[ch]);
+  }
+  if (i < 0) return ym;
+  return ym.slice(0, i) + TONE_VOWEL[ym[i]][tone - 1] + ym.slice(i + 1);
+}
 // [汉字, 带调拼音, 声母, 韵母, 声调] —— 一年级常用字
 const CHARS = [
   ['妈','mā','m','a',1],['爸','bà','b','a',4],['米','mǐ','m','i',3],['大','dà','d','a',4],
@@ -603,9 +726,41 @@ function speak(text, rate) {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-CN';
     if (zhVoice) u.voice = zhVoice;
-    u.rate = rate || 0.75;
+    u.rate = rate || 0.65;               // 放慢一点，单字发音更完整
     speechSynthesis.speak(u);
   } catch (e) {}
+}
+/* ---------------- 拼音标准录音（本地 mp3，失败时回退到系统语音合成） ---------------- */
+const YM_AUDIO_NAME = { 'ü': 'v', 'üe': 've', 'ün': 'vn' };   // 音频文件名用 v 表示 ü
+let pinyinAudio = null;
+let audioSeq = 0;
+function playAudioFile(src, fallback) {
+  const seq = ++audioSeq;
+  let fellBack = false;
+  const fb = () => {
+    if (fellBack || seq !== audioSeq) return;   // 已被下一次点读取代，不再回退
+    fellBack = true;
+    speak(fallback, 0.65);
+  };
+  try {
+    if (!pinyinAudio) pinyinAudio = new Audio();
+    pinyinAudio.onerror = fb;
+    pinyinAudio.pause();
+    pinyinAudio.currentTime = 0;
+    pinyinAudio.src = src;
+    const p = pinyinAudio.play();
+    if (p && p.catch) p.catch(fb);
+  } catch (e) { fb(); }
+}
+function playPinyinSound(kind, key, fallback) {
+  const name = kind === 'sm' ? key : (YM_AUDIO_NAME[key] || key);
+  playAudioFile(`audio/${kind}/${name}.mp3`, fallback);
+}
+/* 声调卡读“韵母 + 声调”的纯韵母录音，例如 un 的第一声读 wēn，而不是“村”。
+   ong 没有零声母音节，ong1/3/4 用纯韵母录音，ong2 暂用 tong2 保留正确声调。 */
+function playToneSound(ym, tone, fallback) {
+  const name = YM_AUDIO_NAME[ym] || ym;
+  playAudioFile(`audio/tone/${name}${tone}.mp3`, fallback);
 }
 
 function newQuestion() {
@@ -656,6 +811,7 @@ function newPinyinBlendQuestion() {
            char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, tone: t.t,
            smOpts: shuffle([t.sm, ...pick3(smPool)]),
            ymOpts: shuffle([t.ym, ...pick3(ymPool)]),
+           toneOpts: [1, 2, 3, 4],
            answer: t.c };
 }
 function questionKey(q) {
@@ -687,7 +843,7 @@ const START_C = START + RUNNER_W / 2;                 // 角色中心的起点
 const stepPx = (FINISH - START_C) / STEPS;            // FINISH = 终点线中心（角色中心抵达处）
 const lanesEl = document.getElementById('lanes');
 
-const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, done: false, lock: false }));
+const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, pickSm: null, pickYm: null, pickTone: null, showPy: false, done: false, lock: false }));
 const usedQKeys = new Set();
 let qTimers = new WeakMap();
 
@@ -726,25 +882,34 @@ function pinyinDiagram(q, pick) {
     ${pick !== null ? `<div style="font-size:13px;color:#A090B2;font-weight:700">已选：<b style="color:#FF6FAE">${pick}</b></div>` : ''}
   </div>`;
 }
-/* 拼音-分与合题图：上=完整拼音(带调)+汉字（点读）；下=声母、韵母 两个空槽 */
-function pinyinBlendDiagram(q, pickSm, pickYm) {
+/* 拼音-分与合题图：上=汉字（拼音默认隐藏，点小眼睛显示）+ 点读；下=声母、韵母、声调 三个空槽 */
+function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const slot = (val, filled, label) =>
     `<div class="pyb-slot${filled ? ' filled' : ''}"><b>${val || '?'}</b><span>${label}</span></div>`;
+  // 睁眼=拼音隐藏中（点一下显示）；闭眼=拼音显示中（点一下隐藏）
+  const eyeSvg = show => show
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   return `<div class="pyb-wrap">
     <div class="pyb-top" data-say="${q.char}">
-      <b>${q.pinyin}</b><i>${q.char}</i><span>🔊 点击听</span>
+      <b class="pyb-py${showPy ? '' : ' is-hidden'}">${q.pinyin}</b><i>${q.char}</i>
+      <span class="pyb-side">
+        <span>🔊 点击听</span>
+        <span class="pyb-eye" role="button" tabindex="0" title="${showPy ? '隐藏拼音' : '显示拼音'}" aria-label="显示或隐藏拼音">${eyeSvg(showPy)}</span>
+      </span>
     </div>
-    <svg class="pyb-links" viewBox="0 0 260 24" preserveAspectRatio="none">
-      <path class="link" d="M130 0 L86 24"/><path class="link" d="M130 0 L174 24"/>
+    <svg class="pyb-links" viewBox="0 0 300 24" preserveAspectRatio="none">
+      <path class="link" d="M150 0 L46 24"/><path class="link" d="M150 0 L150 24"/><path class="link" d="M150 0 L254 24"/>
     </svg>
     <div class="pyb-row">
       ${slot(pickSm, !!pickSm, '声母')}
       ${slot(pickYm, !!pickYm, '韵母')}
+      ${slot(pickTone ? TONE_MARK[pickTone] : '', !!pickTone, '声调')}
     </div>
   </div>`;
 }
-function diagram(q, pick, pickSm, pickYm) {
-  if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm);
+function diagram(q, pick, pickSm, pickYm, pickTone, showPy, withFlip = true) {
+  if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy);
   if (q.kind === 'py') return pinyinDiagram(q, pick);
   const box = (x, y, val, isBlank) => {
     const cls = isBlank ? (pick !== null ? 'numbox filled' : 'numbox blank') : 'numbox';
@@ -765,11 +930,17 @@ function diagram(q, pick, pickSm, pickYm) {
     ? box(110, 108, q.top, q.top === null)
     : box(40, 108, q.parts[0], q.parts[0] === null) + box(180, 108, q.parts[1], q.parts[1] === null);
   const label = q.flip ? '分 ⟶ 合' : '合 ⟶ 分';
-  return `<svg viewBox="0 0 300 176">
+  // 点下面的方向标签即可上下翻转题图（分↔合）
+  const flipBtn = withFlip ? `<g class="flip-toggle" role="button" aria-label="点击上下翻转">
+    <title>点击上下翻转</title>
+    <rect x="82" y="164" width="136" height="26" rx="13" fill="#FFF6E6" stroke="#FFD9A8" stroke-width="2"/>
+    <text x="150" y="182" text-anchor="middle" font-size="14" fill="#C77A00" font-weight="800">${label} ↕</text>
+  </g>` : '';
+  return `<svg viewBox="0 0 300 ${withFlip ? 202 : 176}">
     ${links}
     ${topRow}
     ${botRow}
-    <text x="150" y="170" text-anchor="middle" font-size="14" fill="#B4A6C4" font-weight="600">${label}</text>
+    ${flipBtn}
   </svg>`;
 }
 
@@ -787,25 +958,39 @@ GROUPS.forEach(g => {
     <div class="pad" id="pad${g.no}"></div>
     <div class="acts">
       <button type="button" class="btn" id="cl${g.no}">清除</button>
+      <button type="button" class="btn help" id="hp${g.no}">🥕 帮助</button>
       <button type="button" class="btn go" id="ok${g.no}" disabled>确定</button>
     </div>`;
   stationsEl.appendChild(el);
   g.el = el; g.qEl = el.querySelector(`#qb${g.no}`); g.padEl = el.querySelector(`#pad${g.no}`);
   g.avEl = el.querySelector('.st-av');
   g.okEl = el.querySelector(`#ok${g.no}`); g.scEl = el.querySelector(`#sc${g.no}`);
+  g.helpEl = el.querySelector(`#hp${g.no}`);
   el.querySelector(`#cl${g.no}`).onclick = () => {
     if (g.done || g.lock || finished) return;
-    g.pick = null; g.pickSm = null; g.pickYm = null; render(g);
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickTone = null; render(g);
   };
+  g.helpEl.onclick = () => openHelp(g);
   g.okEl.onclick = () => submit(g);
   g.qEl.addEventListener('click', e => {          // 题图内元素点读
+    const flipBtn = e.target.closest('.flip-toggle');
+    if (flipBtn) {                                 // 点方向标签：上下翻转题图
+      if (g.done || g.lock || finished || g.q.kind) return;
+      g.q.flip = !g.q.flip;
+      g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
+      return;
+    }
+    const eye = e.target.closest('.pyb-eye');
+    if (eye) { g.showPy = !g.showPy; render(g); return; }   // 小眼睛：显示/隐藏拼音
     const t = e.target.closest('[data-say]');
     if (t) speak(t.dataset.say);
   });
 });
 
 /* ---------------- 自定义头像（本地保存） ---------------- */
-const AV_KEY = 'trackrace.avatar.v1.';
+const AV_KEY = 'trackrace.avatar.v2.';
+const AV_KEY_OLD = 'trackrace.avatar.v1.';
+const OLD_AV_NO = { kuromi: 1, egg: 2, lotso: 4 };   // 旧版号码：1库洛米 2蛋仔 3爱莎(已移除) 4草莓熊
 let pendingAv = null;
 const avInput = document.createElement('input');
 avInput.type = 'file';
@@ -835,13 +1020,23 @@ avInput.onchange = () => {
 };
 function loadAvatars() {
   GROUPS.forEach(g => {
-    try { const v = localStorage.getItem(AV_KEY + g.no); if (v) g.avatar = v; } catch (e) {}
+    try {
+      let v = localStorage.getItem(AV_KEY + g.key);
+      const oldNo = OLD_AV_NO[g.key];
+      if (!v && oldNo) {
+        const oldV = localStorage.getItem(AV_KEY_OLD + oldNo);
+        if (oldV) { v = oldV; localStorage.setItem(AV_KEY + g.key, oldV); }
+      }
+      if (v) g.avatar = v;
+      if (oldNo) localStorage.removeItem(AV_KEY_OLD + oldNo);   // 迁移后清理旧存档
+    } catch (e) {}
   });
+  try { localStorage.removeItem(AV_KEY_OLD + 3); } catch (e) {}   // 已移除的 3 号爱莎
 }
 function saveAvatar(g) {
   try {
-    if (g.avatar) localStorage.setItem(AV_KEY + g.no, g.avatar);
-    else localStorage.removeItem(AV_KEY + g.no);
+    if (g.avatar) localStorage.setItem(AV_KEY + g.key, g.avatar);
+    else localStorage.removeItem(AV_KEY + g.key);
   } catch (e) {}
 }
 function setAvatar(g, url) { g.avatar = url; paintAvatar(g); saveAvatar(g); }
@@ -861,22 +1056,39 @@ function paintAvatar(g) {
 
 function renderPad(g) {
   g.padEl.innerHTML = '';
-  if (g.q.kind === 'pyblend') {                   // 拼音-分与合：先选声母，再选韵母（选项可点读）
+  g.padEl.classList.remove('compact');
+  if (g.q.kind === 'pyblend') {                   // 拼音-分与合：选声母、韵母、声调（选项可点读）
     g.padEl.style.display = 'block';
     const cap = t => `<div class="pad-cap">${t} · 点击听音 🔊</div>`;
-    const sayOf = (slot, v) => slot === 'sm' ? (SM_SAY[v] || v) : (YM_SAY[v] || v);
+    const toneSay = (ym, t) => (YM_TONE_SAY[ym] && YM_TONE_SAY[ym][t - 1]) || '';
+    const curYm = g.pickYm || g.q.ym;               // 声调跟着已选韵母变化，未选时用题目韵母
+    const curSm = g.pickSm || g.q.sm;
+    // 拼音规范：j/q/x/y 与 ü 相拼时，ü 去掉两点（jue、qu、xu、yu……），声调标在 u 上
+    const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
+      ? 'u' + curYm.slice(1) : curYm;
+    const sayOf = (slot, v) => slot === 'sm' ? (SM_SAY[v] || v)
+      : slot === 'ym' ? (YM_SAY[v] || v)
+      : `${toneSay(curYm, +v) || TONE_NAME[v]}，${TONE_NAME[v]}`;
+    const curOf = slot => slot === 'sm' ? g.pickSm : slot === 'ym' ? g.pickYm : g.pickTone;
     const grid = (arr, slot) => `<div class="pad-grid">` + arr.map(v => {
-      const cur = slot === 'sm' ? g.pickSm : g.pickYm;
-      return `<div class="key charKey${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${v}</div>`;
+      const cur = curOf(slot);
+      const label = slot === 'tone' ? `<b>${toneFinal(toneYm, +v)}</b>` : v;
+      const cls = slot === 'tone' ? 'key charKey toneKey' : 'key charKey';
+      return `<div class="${cls}${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
     }).join('') + '</div>';
-    g.padEl.innerHTML = cap('① 选声母') + grid(g.q.smOpts, 'sm')
-                      + cap('② 选韵母') + grid(g.q.ymOpts, 'ym');
+    g.padEl.innerHTML = `<div class="pyb-sections">
+      <div class="pyb-sec">${cap('① 选声母')}${grid(g.q.smOpts, 'sm')}</div>
+      <div class="pyb-sec">${cap('② 选韵母')}${grid(g.q.ymOpts, 'ym')}</div>
+      <div class="pyb-sec wide">${cap('③ 选声调')}${grid(g.q.toneOpts, 'tone')}</div>
+    </div>`;
     g.padEl.querySelectorAll('.key').forEach(k => {
       k.onclick = () => {
         if (g.done || g.lock || finished) return;
         if (k.dataset.slot === 'sm') g.pickSm = k.dataset.val;
-        else g.pickYm = k.dataset.val;
-        speak(sayOf(k.dataset.slot, k.dataset.val));   // 点读：声母读呼读音、韵母读示例音
+        else if (k.dataset.slot === 'ym') g.pickYm = k.dataset.val;
+        else g.pickTone = Number(k.dataset.val);
+        if (k.dataset.slot === 'tone') playToneSound(curYm, Number(k.dataset.val), sayOf('tone', k.dataset.val));
+        else playPinyinSound(k.dataset.slot, k.dataset.val, sayOf(k.dataset.slot, k.dataset.val));
         render(g);
       };
     });
@@ -894,28 +1106,56 @@ function renderPad(g) {
     });
     return;
   }
-  g.padEl.style.gridTemplateColumns = 'repeat(5, 1fr)';
-  for (let n = 1; n <= MAXN; n++) {
+  let padMax = MAXN;
+  if (MODE === 'custom' && customQ) {
+    const nums = [g.q.top, g.q.answer, ...(g.q.parts || [])].filter(x => x !== null && x !== undefined && !isNaN(x));
+    padMax = Math.max(MAXN, ...nums);
+  }
+  const compact = padMax > 10;
+  g.padEl.classList.toggle('compact', compact);
+  g.padEl.style.gridTemplateColumns = compact ? 'repeat(10, 1fr)' : 'repeat(5, 1fr)';
+  for (let n = 1; n <= padMax; n++) {
     const k = document.createElement('div');
     k.className = 'key' + (g.pick === n ? ' sel' : '');
     k.textContent = n;
-  k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = n; render(g); };
+    k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = n; render(g); };
     g.padEl.appendChild(k);
   }
 }
 function render(g) {
-  g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm);
+  g.qEl.innerHTML = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
   renderPad(g);
   g.okEl.disabled = g.q.kind === 'pyblend'
-    ? !(g.pickSm && g.pickYm)
+    ? !(g.pickSm && g.pickYm && g.pickTone)
     : g.pick === null;
+  if (g.helpEl) {
+    const py = !!g.q.kind;
+    g.helpEl.style.display = py ? 'none' : '';
+    g.helpEl.disabled = py || !!g.done || !!g.lock || finished;
+  }
+}
+/* 自定义题工厂：只填总数时，每道题随机生成一个分与合组合。
+   总数 1 只有 0+1 一种组合，固定留空第二个部分。 */
+function makeCustomQuestion() {
+  if (customQ.random) {
+    const total = customQ.top;
+    const a = total <= 1 ? 0 : rnd(1, total - 1);
+    const b = total - a;
+    const blankSecond = total <= 1 ? true : Math.random() < 0.5;
+    return { top: total, parts: blankSecond ? [a, null] : [null, b], answer: blankSecond ? b : a, flip: false };
+  }
+  return {
+    top: customQ.top,
+    parts: [customQ.parts[0], customQ.parts[1]],
+    answer: customQ.answer,
+    flip: Math.random() < 0.5
+  };
 }
 function resetGroup(g) {
+  closeHelpIf(g);
   g.lock = false;
-  g.pickSm = null; g.pickYm = null;
-  g.q = (MODE === 'custom' && customQ)
-    ? { top: customQ.top, parts: [customQ.parts[0], customQ.parts[1]], answer: customQ.answer, flip: Math.random() < 0.5 }
-    : uniqueQuestion();
+  g.pickSm = null; g.pickYm = null; g.pickTone = null; g.showPy = false;
+  g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion();
   g.pick = null; render(g);
 }
 
@@ -923,12 +1163,12 @@ function resetGroup(g) {
 let finished = false;
 function submit(g) {
   if (g.done || g.lock || finished) return;
-  if (g.q.kind === 'pyblend') { if (!g.pickSm || !g.pickYm) return; }
+  if (g.q.kind === 'pyblend') { if (!g.pickSm || !g.pickYm || !g.pickTone) return; }
   else if (g.pick === null) return;
   g.lock = true;
   g.okEl.disabled = true;
   const ok = g.q.kind === 'pyblend'
-    ? (g.pickSm === g.q.sm && g.pickYm === g.q.ym)
+    ? (g.pickSm === g.q.sm && g.pickYm === g.q.ym && g.pickTone === g.q.tone)
     : (g.pick === g.q.answer);
   if (ok) {
     beep(true);
@@ -964,7 +1204,7 @@ function submit(g) {
     const timer = setTimeout(() => {
       g.el.classList.remove('wrong');
       g.lock = false;                                   // 答错后解锁，否则这组再也答不了题
-      g.pick = null; g.pickSm = null; g.pickYm = null; render(g);
+      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickTone = null; render(g);
     }, 620);
     qTimers.set(g, timer);
   }
@@ -973,6 +1213,7 @@ function submit(g) {
 /* ---------------- 结算 ---------------- */
 function win(g, reason) {
   if (finished) return; finished = true;
+  closeHelp();
   stopTimer();
   GROUPS.forEach(group => { if (qTimers.has(group)) clearTimeout(qTimers.get(group)); });
   document.querySelector('#maskWin .win-txt').textContent =
@@ -999,7 +1240,7 @@ document.querySelectorAll('#tabs .tab').forEach(t => {
 
 function bannerFor(m) {
   if (SUBJECT === 'pinyin') {
-    if (m === 'pyblend')  return '🧩 拼音-分与合 · 听音选拼 🏁';
+    if (m === 'pyblend')  return '🧩 拼音 · 拼写练习 · 听音选拼 🏁';
     return m === 'challenge' ? '⏱ 限时听音辨字 · 答错退一格 🏁' : '🔊 听音辨字 · 前进一格 🏁';
   }
   if (m === 'challenge') return '⏱ 限时挑战 · 答错退一格 🏁';
@@ -1037,8 +1278,12 @@ function endByTime() {
 
 /* ---------------- 自定义出题 ---------------- */
 const maskCustom = document.getElementById('maskCustom');
-const TIP_DEFAULT = '把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。';
-function openCustom() { maskCustom.classList.add('show'); }
+const TIP_DEFAULT = '把要学生填的那一格<b>留空</b>，其余两格填数。例：总数 8、部分① 3、部分② 留空 → 答案是 5。<br>只填总数（如 9）也可：每道题随机生成 1+8、2+7……；三格都留空则使用系统题目。总数可填 1–20。';
+function openCustom() {
+  const tip = document.getElementById('cqTip');
+  tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
+  maskCustom.classList.add('show');
+}
 function syncTabs() {
   document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.mode === MODE));
 }
@@ -1052,12 +1297,39 @@ document.getElementById('cqApply').onclick = () => {
   const top = val('cqTop'), a = val('cqA'), b = val('cqB');
   const tip = document.getElementById('cqTip');
   const err = msg => { tip.textContent = msg; tip.className = 'tip err'; };
-  if ([top, a, b].filter(x => x === null).length !== 1) return err('请只留空一格（学生要填的那格），另外两格填数。');
-  if ([top, a, b].some(x => x !== null && (isNaN(x) || x < 0 || x > 10))) return err('数字只能在 0 – 10 之间。');
-  if ([top, a, b].some(x => x !== null && x > MAXN)) return err(`当前范围是 ${MAXN} 以内，已填数字不能超过 ${MAXN}。`);
+
+  // 三格都留空：不设置自定义题，使用系统题目
+  if (top === null && a === null && b === null) {
+    customQ = null;
+    tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
+    maskCustom.classList.remove('show');
+    MODE = 'practice';
+    bannerEl.innerHTML = bannerFor('practice');
+    syncTabs();
+    resetAll();
+    return;
+  }
+  if ([top, a, b].some(x => x !== null && (isNaN(x) || x < 0 || x > 20))) {
+    return err('数字只能在 0 – 20 之间。');
+  }
+  if (top !== null && top < 1) return err('总数要在 1 – 20 之间。');
+
+  // 只填总数：每次随机生成一个分与合组合
+  if (top !== null && a === null && b === null) {
+    customQ = { top, parts: [null, null], answer: null, random: true };
+    tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
+    maskCustom.classList.remove('show');
+    finished = false;
+    GROUPS.forEach(g => { g.done = false; resetGroup(g); });
+    return;
+  }
+
+  if ([top, a, b].filter(x => x === null).length !== 1) {
+    return err('请只留空一格（学生要填的那格）；只填总数时，两个部分都留空；三格都留空则使用系统题目。');
+  }
   let q = null;
   if (top === null) {
-    if (a + b > 10 || a + b < 1) return err('两个部分数之和要 ≥ 1 且 ≤ 10。');
+    if (a + b > 20 || a + b < 1) return err('两个部分数之和要 ≥ 1 且 ≤ 20。');
     q = { top: null, parts: [a, b], answer: a + b };
   } else if (a === null) {
     if (b >= top) return err('部分数必须小于总数 ' + top + '。');
@@ -1066,7 +1338,6 @@ document.getElementById('cqApply').onclick = () => {
     if (a >= top) return err('部分数必须小于总数 ' + top + '。');
     q = { top, parts: [a, null], answer: top - a };
   }
-  if (q.answer > MAXN) return err(`答案是 ${q.answer}，超过当前 ${MAXN} 以内范围。`);
   customQ = q;
   tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
   maskCustom.classList.remove('show');
@@ -1079,21 +1350,24 @@ document.getElementById('btnRule').onclick = () => {
   const modeText = MODE === 'challenge' ? '挑战模式' : MODE === 'custom' ? '自定义出题' : '练习模式';
   const subjText = SUBJECT === 'pinyin' ? '拼音听音辨字' : '数学分与合';
   const rules = SUBJECT === 'pinyin' ? [
-    `当前为${modeText} · 拼音练习，全班分为 4 组比赛。`,
+    `当前为${modeText} · 拼音练习，全班分为 3 组比赛。`,
     MODE === 'pyblend'
-      ? '「拼音-分与合」：上方显示完整拼音（带声调）和汉字，点击可听读音；在下方选出正确的 声母 和 韵母。'
+      ? '「拼音 · 拼写练习」：上方默认只显示汉字，点击可听读音；在下方选出正确的 声母、韵母 和 声调。点小眼睛可显示或隐藏拼音。'
       : '题目给出 声母 + 韵母 + 声调，在下方 4 个汉字中选出对应的字。',
     '声母、韵母、声调卡片都可以点击听发音，「拼一拼」可听整字读音。',
     '答对 → 小动物前进一格并读出该字；先前进 10 格的小组获胜。',
     MODE === 'challenge' ? '挑战模式限时 2 分钟，答错后退一格。' : '练习模式答错不后退，可继续尝试。',
     '点击顶栏「📖 拼音表」可全屏打开声母、韵母、四声、常用字点读表。'
   ] : [
-    `当前为${modeText} · 数学分与合，范围是 ${MAXN} 以内；自动题在一局内不重复。`,
-    '全班分为 4 组，每组在下方答题台用数字键盘作答。',
+    MODE === 'custom'
+      ? '当前为自定义出题 · 数学分与合：总数可填 1–20；只填总数会随机生成分与合组合；三格都留空则使用系统题目。'
+      : `当前为${modeText} · 数学分与合，范围是 ${MAXN} 以内；自动题在一局内不重复。`,
+    '全班分为 3 组，每组在下方答题台用数字键盘作答。',
     '答对 → 该组小动物前进一格；前进 10 格抵达终点。',
     MODE === 'challenge' ? '挑战模式限时 2 分钟，答错后退一格。' : '练习模式答错不后退，可继续尝试。',
-    MODE === 'custom' ? '自定义模式使用教师设置的同一道题，应用后不重置比分。' : '题目包含「知总数求部分」和「知部分求总数」。',
-    '每次刷新题目会随机出现两种版式：「上合下分」（总数在上）和「上分下合」（部分数在上）。'
+    MODE === 'custom' ? '自定义模式使用教师设置的题目，换题不重置比分；只填总数时，每道题随机生成一个分与合组合。' : '题目包含「知总数求部分」和「知部分求总数」。',
+    '每次刷新题目会随机出现两种版式：「上合下分」（总数在上）和「上分下合」（部分数在上）。',
+    '点击答题台的「🥕 帮助」可打开小帮手，拖动小红萝卜到罐子里，边摆边算。'
   ];
   document.getElementById('ruleList').innerHTML = rules.map(rule => `<li>${rule}</li>`).join('');
   document.getElementById('maskRule').classList.add('show');
@@ -1146,16 +1420,174 @@ function beep(ok) {
   } catch (e) {}
 }
 
+/* ---------------- 分与合帮助（拖红萝卜） ---------------- */
+const helpMask = document.getElementById('helpMask');
+const helpTipEl = document.getElementById('helpTip');
+const helpBody = document.getElementById('helpBody');
+const CARROT_SVG = `<svg viewBox="0 0 24 34" aria-hidden="true">
+  <path d="M12 9c3.1 0 5.2 2.3 5.2 5.2 0 4.7-3.1 9.9-5.2 13.4-2.1-3.5-5.2-8.7-5.2-13.4C6.8 11.3 8.9 9 12 9z" fill="#EF5B4C"/>
+  <path d="M12 9c1.6 0 2.8 1.1 2.8 2.7S13.6 14.4 12 14.4s-2.8-1.1-2.8-2.7S10.4 9 12 9z" fill="#FF9B8E" opacity=".7"/>
+  <path d="M9.1 4.2c1 1.5 1.9 2.2 2.9 2.2s1.9-.7 2.9-2.2c.2 2.2-1 4-2.9 4s-3.1-1.8-2.9-4z" fill="#52B96A"/>
+</svg>`;
+const HELP_SIDE = ['left', 'right'];
+let helpGroup = null;
+let helpState = { top: 0, left: 0, right: 0 };
+let helpDrag = null;
+
+function helpModeOf(q) { return q.top !== null ? 'fen' : 'he'; }
+function helpOpenState(g) {
+  const q = g.q;
+  return q.top !== null
+    ? { top: q.top, left: 0, right: 0 }
+    : { top: 0, left: q.parts[0], right: q.parts[1] };
+}
+function helpSolved() {
+  if (!helpGroup) return false;
+  const q = helpGroup.q;
+  if (helpModeOf(q) === 'fen') {
+    const knownIdx = q.parts[0] === null ? 1 : 0;
+    return helpState.top === 0
+      && helpState[HELP_SIDE[knownIdx]] === q.parts[knownIdx]
+      && helpState[HELP_SIDE[1 - knownIdx]] === q.answer;
+  }
+  return helpState.left === 0 && helpState.right === 0 && helpState.top === q.answer;
+}
+function carrotHTML(n, zone) {
+  return Array.from({ length: n }, () => `<div class="help-carrot" data-zone="${zone}">${CARROT_SVG}</div>`).join('');
+}
+function renderHelp() {
+  if (!helpGroup) return;
+  const q = helpGroup.q;
+  const mode = helpModeOf(q);
+  const knownIdx = q.parts[0] === null ? 1 : 0;
+  const knownVal = q.parts[knownIdx];
+  const knownSide = HELP_SIDE[knownIdx];
+  const otherSide = HELP_SIDE[1 - knownIdx];
+  const sideName = s => s === 'left' ? '左边' : '右边';
+  // 问号格只显示 ?，哪怕拖入萝卜也不显示数字，让小朋友自己数
+  const zone = (key, big, label, cls) => `
+    <div class="help-zone ${cls || ''}" data-zone="${key}">
+      <div class="help-zone-head"><b>${big}</b><span>${label}</span></div>
+      <div class="help-carrots">${carrotHTML(helpState[key], key)}</div>
+    </div>`;
+  let topZone, leftZone, rightZone;
+  if (mode === 'fen') {
+    topZone = zone('top', q.top, '总数');
+    const knownJar = zone(knownSide, knownVal, `${sideName(knownSide)}罐子`, 'known');
+    const unknownJar = zone(otherSide, '?', '数一数', 'unknown');
+    leftZone = knownSide === 'left' ? knownJar : unknownJar;
+    rightZone = knownSide === 'left' ? unknownJar : knownJar;
+  } else {
+    topZone = zone('top', '?', '一共几个？');
+    leftZone = zone('left', helpState.left, '左边罐子');
+    rightZone = zone('right', helpState.right, '右边罐子');
+  }
+  helpBody.innerHTML = `<div class="help-main">
+    <div class="help-question">
+      <div class="help-question-label">原题</div>
+      <div class="help-question-img">${diagram(q, null, null, null, null, false, false)}</div>
+    </div>
+    <div class="help-panel">
+      <div class="help-top">${topZone}</div>
+      <div class="help-jars">${leftZone}${rightZone}</div>
+    </div>
+  </div>`;
+  if (helpSolved()) helpBody.querySelectorAll('.help-zone').forEach(z => z.classList.add('solved'));
+  helpTipEl.textContent = mode === 'fen'
+    ? `把上面的 ${q.top} 个红萝卜拖进罐子：${sideName(knownSide)}放 ${knownVal} 个，${sideName(otherSide)}放剩下的。`
+    : '把两个罐子里的红萝卜都拖到上面，数一数一共几个。';
+}
+function helpZoneAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el ? el.closest('.help-zone') : null;
+}
+function helpPlaceGhost(e) {
+  if (!helpDrag) return;
+  const gh = helpDrag.ghost;
+  const r = board.getBoundingClientRect();
+  const s = r.width / 1920;
+  gh.style.left = ((e.clientX - r.left) / s) + 'px';
+  gh.style.top = ((e.clientY - r.top) / s) + 'px';
+}
+function helpPointerDown(e) {
+  const c = e.target.closest('.help-carrot');
+  if (!c || !helpGroup) return;
+  const zone = c.dataset.zone;
+  if (!helpState[zone]) return;
+  e.preventDefault();
+  const ghost = document.createElement('div');
+  ghost.className = 'help-carrot-ghost';
+  ghost.innerHTML = CARROT_SVG;
+  board.appendChild(ghost);
+  helpDrag = { zone, ghost, src: c };
+  c.classList.add('dragging');
+  helpPlaceGhost(e);
+  document.addEventListener('pointermove', helpPointerMove);
+  document.addEventListener('pointerup', helpPointerUp);
+  document.addEventListener('pointercancel', helpPointerUp);
+}
+function helpPointerMove(e) {
+  if (!helpDrag) return;
+  helpPlaceGhost(e);
+  document.querySelectorAll('.help-zone.drop-hover').forEach(z => z.classList.remove('drop-hover'));
+  const z = helpZoneAt(e.clientX, e.clientY);
+  if (z) z.classList.add('drop-hover');
+}
+function helpPointerUp(e) {
+  document.removeEventListener('pointermove', helpPointerMove);
+  document.removeEventListener('pointerup', helpPointerUp);
+  document.removeEventListener('pointercancel', helpPointerUp);
+  if (!helpDrag) return;
+  const drag = helpDrag;
+  helpDrag = null;
+  drag.ghost.remove();
+  drag.src.classList.remove('dragging');
+  document.querySelectorAll('.help-zone.drop-hover').forEach(z => z.classList.remove('drop-hover'));
+  const target = helpZoneAt(e.clientX, e.clientY);
+  if (!target) { renderHelp(); return; }
+  const to = target.dataset.zone;
+  if (to === drag.zone || !helpState[drag.zone]) { renderHelp(); return; }
+  helpState[drag.zone]--;
+  helpState[to]++;
+  if (helpSolved()) beep(true);
+  renderHelp();
+}
+function openHelp(g) {
+  if (!g || !g.q || g.q.kind || g.done || g.lock || finished) return;
+  helpGroup = g;
+  helpState = helpOpenState(g);
+  helpMask.classList.add('show');
+  renderHelp();
+}
+function closeHelp() {
+  helpMask.classList.remove('show');
+  helpGroup = null;
+  helpDrag = null;
+  document.querySelectorAll('.help-carrot-ghost').forEach(x => x.remove());
+  document.querySelectorAll('.help-zone.drop-hover').forEach(x => x.classList.remove('drop-hover'));
+}
+function closeHelpIf(g) { if (helpGroup === g) closeHelp(); }
+helpBody.addEventListener('pointerdown', helpPointerDown);
+document.getElementById('helpClose').onclick = closeHelp;
+document.getElementById('helpDone').onclick = closeHelp;
+document.getElementById('helpReset').onclick = () => {
+  if (!helpGroup) return;
+  helpState = helpOpenState(helpGroup);
+  renderHelp();
+};
+helpMask.addEventListener('click', e => { if (e.target === helpMask) closeHelp(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && helpGroup) closeHelp(); });
+
 /* ---------------- 学习分类切换 + 拼音表 ---------------- */
 const maskChart = document.getElementById('chartMask');
 function buildChart() {
-  const card = (big, small, say, cls) =>
-    `<div class="c-card ${cls || ''}" data-say="${say}"><b>${big}</b><span>${small}</span></div>`;
+  const card = (big, small, say, cls, kind, key) =>
+    `<div class="c-card ${cls || ''}" data-say="${say}"${kind ? ` data-kind="${kind}" data-key="${key || big}"` : ''}><b>${big}</b><span>${small}</span></div>`;
   let html = '<h4>声母（23 个 · 点击听呼读音）</h4><div class="c-grid">'
-    + SM_LIST.map(([s, c]) => card(s, c, c)).join('') + '</div>';
+    + SM_LIST.map(([s, c]) => card(s, c, c, '', 'sm', s)).join('') + '</div>';
   YM_GROUPS.forEach(([name, arr]) => {
     html += `<h4>${name}</h4><div class="c-grid">`
-      + arr.map(([y, c]) => card(y, c, c)).join('') + '</div>';
+      + arr.map(([y, c]) => card(y, c, c, '', 'ym', y)).join('') + '</div>';
   });
   html += '<h4>四声练习（m + a · 点击听读音）</h4><div class="c-grid">'
     + [['妈','mā · 第一声',1],['麻','má · 第二声',2],['马','mǎ · 第三声',3],['骂','mà · 第四声',4]]
@@ -1173,12 +1605,14 @@ document.getElementById('chartFs').onclick = () => {
 };
 maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
-  if (t) speak(t.dataset.say);
+  if (!t) return;
+  if (t.dataset.kind) playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
+  else speak(t.dataset.say);
 });
 
 const subjectSel = document.getElementById('subjectSel');
 subjectSel.onchange = () => setSubject(subjectSel.value);
-/* 让下拉框与当前科目+模式保持一致（拼音-分与合页签 ↔ 拼音·分与合选项 双向联动） */
+/* 让下拉框与当前科目+模式保持一致（拼音·拼写练习 = 拼音科目 + pyblend 模式） */
 function syncSubjSel() {
   subjectSel.value = (SUBJECT === 'pinyin' && MODE === 'pyblend') ? 'pinyin-blend' : SUBJECT;
 }
@@ -1189,7 +1623,6 @@ function setSubject(s) {
   customQ = null;
   document.getElementById('diff').style.display = s === 'pinyin' ? 'none' : 'flex';
   document.querySelector('.tab[data-mode="custom"]').style.display = s === 'pinyin' ? 'none' : '';
-  document.querySelector('.tab[data-mode="pyblend"]').style.display = s === 'pinyin' ? '' : 'none';
   document.getElementById('btnChart').style.display = s === 'pinyin' ? 'flex' : 'none';
   if (blend)                                                        MODE = 'pyblend';
   else if (s === 'pinyin' && (MODE === 'custom' || MODE === 'pyblend')) MODE = 'practice';
