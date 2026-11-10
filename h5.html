@@ -588,6 +588,13 @@ const TONE_NAME = { 1: '第一声', 2: '第二声', 3: '第三声', 4: '第四�
 const TONE_MARK = { 1: 'ˉ', 2: 'ˊ', 3: 'ˇ', 4: 'ˋ' };
 /* 给韵母标声调：有 a/o/e 标在 a/o/e 上；iu、ui 标在后一个字母；其余标在单韵母上 */
 const TONE_VOWEL = { a: 'āáǎà', o: 'ōóǒò', e: 'ēéěè', i: 'īíǐì', u: 'ūúǔù', 'ü': 'ǖǘǚǜ' };
+/* 三拼音节 = 声母 + 介母 + 韵母，例如 hua = h + u + a、tian = t + i + an。
+   拼写练习中把这类音节拆成“介母 + 韵母”两个部分来选，不再把 ua、ian 等当作一个韵母。 */
+const YM_PARTS = {
+  ua: ['u', 'a'], uo: ['u', 'o'], ia: ['i', 'a'], uai: ['u', 'ai'],
+  ian: ['i', 'an'], iao: ['i', 'ao'], iang: ['i', 'ang'], iong: ['i', 'ong'],
+  uan: ['u', 'an'], uang: ['u', 'ang'], 'üan': ['ü', 'an']
+};
 function toneFinal(ym, tone) {
   let i = -1;
   for (const v of ['a', 'o', 'e']) { i = ym.indexOf(v); if (i >= 0) break; }
@@ -695,13 +702,17 @@ function newPinyinQuestion() {
 function newPinyinBlendQuestion() {
   const t = CHARS[rnd(0, CHARS.length - 1)];
   const smPool = SM_LIST.map(([s]) => s).filter(s => s !== t.sm);
-  const ymPool = Object.keys(YM_SAY).filter(y => y !== t.ym);
-  const pick3 = arr => { const out = []; while (out.length < 3) { const v = arr[rnd(0, arr.length - 1)]; if (!out.includes(v)) out.push(v); } return out; };
+  const ymPool = Object.keys(YM_SAY).filter(y => !YM_PARTS[y]);   // 干扰项只用真正的韵母
+  const pickN = (arr, n) => { const out = []; while (out.length < n) { const v = arr[rnd(0, arr.length - 1)]; if (!out.includes(v)) out.push(v); } return out; };
   const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const ymParts = YM_PARTS[t.ym] || null;             // 三拼音节：介母 + 韵母
+  const ymOpts = ymParts
+    ? shuffle([...ymParts, ...pickN(ymPool.filter(y => !ymParts.includes(y)), 2)])
+    : shuffle([t.ym, ...pickN(ymPool.filter(y => y !== t.ym), 3)]);
   return { kind: 'pyblend', top: null, parts: [null, null], flip: false,
-           char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, tone: t.t,
-           smOpts: shuffle([t.sm, ...pick3(smPool)]),
-           ymOpts: shuffle([t.ym, ...pick3(ymPool)]),
+           char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, ymParts, tone: t.t,
+           smOpts: shuffle([t.sm, ...pickN(smPool, 3)]),
+           ymOpts,
            toneOpts: [1, 2, 3, 4],
            answer: t.c };
 }
@@ -734,7 +745,7 @@ function layoutTrack() {
   const x = lanesEl.offsetLeft + START + STEPS * stepPx + RUNNER_W / 2 - 3;   // finishLine 以 .track 为定位父级，需加上 lanes 的偏移
   finishLine.style.left = x + 'px';
 }
-const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, pickSm: null, pickYm: null, pickTone: null, showPy: false, done: false, lock: false }));
+const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, pickSm: null, pickYm: null, pickYmParts: [], pickTone: null, showPy: false, done: false, lock: false }));
 let qTimers = new WeakMap();
 
 GROUPS.forEach(g => {
@@ -788,7 +799,7 @@ GROUPS.forEach((g, i) => {
   g.helpEl = el.querySelector('.btn.help');
   el.querySelector('.btn:not(.go):not(.help)').onclick = () => {
     if (g.done || g.lock || finished) return;
-    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickTone = null; render(g);
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; render(g);
   };
   g.helpEl.onclick = () => openHelp(g);
   g.okEl.onclick = () => submit(g);
@@ -907,6 +918,8 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const curYm = pickYm || q.ym;
   const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
     ? 'u' + curYm.slice(1) : curYm;
+  // 三拼音节选完后，韵母槽显示“介母 + 韵母”，不把 ua 当成一个韵母
+  const dispYm = (q.ymParts && pickYm === q.ym) ? q.ymParts.join('+') : pickYm;
   // 睁眼=拼音隐藏中（点一下显示）；闭眼=拼音显示中（点一下隐藏）
   const eyeSvg = show => show
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
@@ -924,7 +937,7 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </svg>
     <div class="pyb-row">
       ${slot(pickSm, !!pickSm, '声母')}
-      ${slot(pickYm, !!pickYm, '韵母')}
+      ${slot(dispYm, !!pickYm, '韵母')}
       ${slot(pickTone ? toneFinal(toneYm, pickTone) : '', !!pickTone, '声调')}
     </div>
   </div>`;
@@ -976,18 +989,21 @@ function renderPad(g) {
     const sayOf = (slot, v) => slot === 'sm' ? (SM_SAY[v] || v)
       : slot === 'ym' ? (YM_SAY[v] || v)
       : `${toneSay(curYm, +v) || TONE_NAME[v]}，${TONE_NAME[v]}`;
+    const ymPicked = slot => (slot === 'ym' && g.q.ymParts) ? (g.pickYmParts || []) : null;
     const curOf = slot => slot === 'sm' ? g.pickSm : slot === 'ym' ? g.pickYm : g.pickTone;
     const grid = (arr, slot) => `<div class="pad-grid">` + arr.map(v => {
       const cur = curOf(slot);
+      const picked = ymPicked(slot);
       // 未选韵母时，声调选项保持空白，避免提前显示正确答案
       const toneBlank = slot === 'tone' && !g.pickYm;
       const label = slot === 'tone' ? `<b>${toneBlank ? '' : toneFinal(toneYm, +v)}</b>` : v;
       const cls = slot === 'tone' ? 'key charKey toneKey' : 'key charKey';
-      return `<div class="${cls}${toneBlank ? ' off' : ''}${cur === v ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
+      const sel = picked ? picked.includes(v) : cur === v;   // 三拼音节可同时选中介母和韵母
+      return `<div class="${cls}${toneBlank ? ' off' : ''}${sel ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
     }).join('') + '</div>';
     g.padEl.innerHTML = `<div class="pyb-sections">
       <div class="pyb-sec">${cap('① 选声母')}${grid(g.q.smOpts, 'sm')}</div>
-      <div class="pyb-sec">${cap('② 选韵母')}${grid(g.q.ymOpts, 'ym')}</div>
+      <div class="pyb-sec">${cap(g.q.ymParts ? '② 选韵母（点选 2 个）' : '② 选韵母')}${grid(g.q.ymOpts, 'ym')}</div>
       <div class="pyb-sec wide">${cap('③ 选声调')}${grid(g.q.toneOpts, 'tone')}</div>
     </div>`;
     g.padEl.querySelectorAll('.key').forEach(k => {
@@ -997,10 +1013,24 @@ function renderPad(g) {
           if (!g.pickYm) return;                   // 先选韵母，声调才有内容
           g.pickTone = Number(k.dataset.val);
           playToneSound(curYm, Number(k.dataset.val), sayOf('tone', k.dataset.val));
+        } else if (k.dataset.slot === 'sm') {
+          g.pickSm = k.dataset.val;
+          playPinyinSound('sm', k.dataset.val, sayOf('sm', k.dataset.val));
+        } else if (g.q.ymParts) {
+          // 三拼音节：介母和韵母分开点选，选满两个才算完成
+          let sel = (g.pickYmParts || []).slice();
+          if (sel.includes(k.dataset.val)) sel = sel.filter(x => x !== k.dataset.val);
+          else if (sel.length < g.q.ymParts.length) sel.push(k.dataset.val);
+          else { playPinyinSound('ym', k.dataset.val, sayOf('ym', k.dataset.val)); return; }
+          g.pickYmParts = sel;
+          const complete = sel.length === g.q.ymParts.length && g.q.ymParts.every(p => sel.includes(p));
+          g.pickYm = complete ? g.q.ym : null;
+          if (!complete) g.pickTone = null;        // 韵母没选全，声调重新选
+          playPinyinSound('ym', k.dataset.val, sayOf('ym', k.dataset.val));
         } else {
-          if (k.dataset.slot === 'sm') g.pickSm = k.dataset.val;
-          else g.pickYm = k.dataset.val;
-          playPinyinSound(k.dataset.slot, k.dataset.val, sayOf(k.dataset.slot, k.dataset.val));
+          g.pickYmParts = [k.dataset.val];
+          g.pickYm = k.dataset.val;
+          playPinyinSound('ym', k.dataset.val, sayOf('ym', k.dataset.val));
         }
         render(g);
       };
@@ -1065,7 +1095,7 @@ function makeCustomQuestion() {
 function resetGroup(g) {
   closeHelpIf(g);
   g.lock = false;
-  g.pickSm = null; g.pickYm = null; g.pickTone = null; g.showPy = false;
+  g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.showPy = false;
   g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion();
   g.pick = null; render(g);
 }
@@ -1116,7 +1146,7 @@ function submit(g) {
     const timer = setTimeout(() => {
       g.el.classList.remove('wrong');
       g.lock = false;                                   // 答错后解锁，否则这组再也答不了题
-      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickTone = null; render(g);
+      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; render(g);
     }, 620);
     qTimers.set(g, timer);
   }
