@@ -1343,13 +1343,15 @@ function pinyinDiagram(q, pick) {
 function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const slot = (val, filled, label, attrs = '') =>
     `<div class="pyb-slot${filled ? ' filled' : ''}${attrs ? ' clickable' : ''}"${attrs}><b>${val || '?'}</b><span>${label}</span></div>`;
-  // 韵母槽：只有“③ 选声调”里选中正确的带调韵母（韵母和声调都对）才显示
+  // 韵母槽：只有“② 选韵母”里选中正确的韵母才出现；
+  // “③ 选声调”也选对后，再补上声调（显示带调韵母）
   const curSm = pickSm || q.sm;
   const curYm = pickYm || q.ym;
   const toneYm = (curYm[0] === 'ü' && ['j', 'q', 'x', 'y'].includes(curSm))
     ? 'u' + curYm.slice(1) : curYm;
-  const toneCorrect = pickYm === q.ym && pickTone !== null && pickTone === q.tone;
-  const toneText = toneCorrect ? toneFinal(toneYm, pickTone) : '';
+  const ymCorrect = pickYm !== null && pickYm === q.ym;
+  const toneCorrect = ymCorrect && pickTone !== null && pickTone === q.tone;
+  const ymText = ymCorrect ? (toneCorrect ? toneFinal(toneYm, pickTone) : toneYm) : '';
   // 读音提示与“③ 选声调”完全一致，录音缺失时才用语音兜底
   const toneSay = toneCorrect
     ? ((YM_TONE_SAY[curYm] && YM_TONE_SAY[curYm][pickTone - 1]) || TONE_NAME[pickTone])
@@ -1374,7 +1376,9 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </svg>
     <div class="pyb-row">
       ${slot(pickSm, !!pickSm, '声母', pickSm ? ` data-say="${SM_SAY[pickSm] || pickSm}" data-kind="sm" data-key="${pickSm}"` : '')}
-      ${slot(toneText, toneCorrect, '韵母', toneCorrect ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"` : '')}
+      ${slot(ymText, ymCorrect, '韵母', toneCorrect
+        ? ` data-say="${toneSay}，${TONE_NAME[pickTone]}" data-kind="tone" data-key="${pickTone}" data-ym="${curYm}"`
+        : (ymCorrect ? ` data-say="${YM_SAY[q.ym] || q.ym}" data-kind="ym" data-key="${curYm}"` : ''))}
       ${slot(fullPinyin, allCorrect, '完整拼音', allCorrect ? ` data-say="${q.char}" data-kind="char" data-key="${q.pinyin}"` : '')}
     </div>
   </div>`;
