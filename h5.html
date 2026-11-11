@@ -1174,10 +1174,10 @@ function audioFor(src) {
   }
   return a;
 }
-/* 预加载排队进行（同时最多 3 个），一次性拉上百个文件会拖慢第一次点击 */
+/* 预加载排队进行（同时最多 6 个），一次性拉上百个文件会拖慢第一次点击 */
 const preloadQueue = [];
 let preloadActive = 0;
-const PRELOAD_MAX = 3;
+const PRELOAD_MAX = 6;
 function pumpPreload() {
   while (preloadActive < PRELOAD_MAX && preloadQueue.length) {
     const src = preloadQueue.shift();
@@ -1273,18 +1273,19 @@ function playToneSound(ym, tone, fallback, onDone) {
   playAudioFile(toneAudioSrc(ym, tone), fallback, onDone);
 }
 /* 提前加载当前题会用到的录音，点按钮时直接从缓存播放，避免 1-2 秒延迟。 */
+function preloadTones(ym) {
+  if (!ym) return;
+  for (let t = 1; t <= 4; t++) preloadAudio(toneAudioSrc(ym, t));
+}
 function preloadQuestionAudio(q) {
   if (!q || !q.kind) return;
   if (q.kind === 'pyblend') {
+    // 按孩子的操作顺序预热：先声母、韵母，再整字，最后声调（选韵母时再补对应韵母的 4 个声调）
     (q.smOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('sm', v)));
     (q.ymOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('ym', v)));
-    if (q.whole) {
-      (q.wholeOpts || []).forEach(o => preloadAudio(charAudioSrc(o.p)));
-    } else {
-      const yms = new Set([q.ym, ...(q.ymOpts || [])]);
-      yms.forEach(ym => { for (let t = 1; t <= 4; t++) preloadAudio(toneAudioSrc(ym, t)); });
-    }
     preloadAudio(charAudioSrc(q.pinyin));
+    if (q.whole) (q.wholeOpts || []).forEach(o => preloadAudio(charAudioSrc(o.p)));
+    else preloadTones(q.ym);
   } else if (q.kind === 'py') {
     (q.opts || []).forEach(ch => { const py = CHAR_PINYIN[ch]; if (py) preloadAudio(charAudioSrc(py)); });
     preloadAudio(charAudioSrc(q.pinyin));
@@ -1468,7 +1469,7 @@ GROUPS.forEach((g, i) => {
   chip.className = 'g-chip' + (i === 0 ? ' on' : '');
   chip.style.setProperty('--c', g.color);
   chip.innerHTML = `${g.no}号·${g.name}<small>0/10</small>`;
-  chip.onclick = () => { if (finished) return; closeHelp(); curGroup = i; syncStations(); };
+  chip.onclick = () => { if (finished) return; closeHelp(); curGroup = i; syncStations(); preloadQuestionAudio(GROUPS[i].q); };
   gSwitch.appendChild(chip);
   g.chipEl = chip;
 
@@ -1791,10 +1792,12 @@ function renderPad(g) {
           g.pickYm = complete ? g.q.ym : null;
           if (!complete) g.pickTone = null;        // 韵母没选全，声调重新选
           playPinyinSound('ym', k.dataset.val, sayOf('ym', k.dataset.val));
+          if (complete) preloadTones(g.pickYm);    // 声调按钮马上要用了，提前把这 4 个音拉好
         } else {
           g.pickYmParts = [k.dataset.val];
           g.pickYm = k.dataset.val;
           playPinyinSound('ym', k.dataset.val, sayOf('ym', k.dataset.val));
+          preloadTones(g.pickYm);
         }
         render(g);
       };
@@ -2159,6 +2162,9 @@ function resetAll() {
     placeRunner(g, false);
     resetGroup(g);
   });
+  // H5 一次只显示一个答题台：优先加载当前台，别的组切过去时再加载
+  preloadQueue.length = 0;
+  if (GROUPS[curGroup]) preloadQuestionAudio(GROUPS[curGroup].q);
   syncStations();
   if (MODE === 'challenge') startTimer(CHALLENGE_SEC); else stopTimer();
 }
