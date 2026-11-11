@@ -169,6 +169,9 @@
   .pyb-slot.clickable:active { transform: scale(.95); }
   .pyb-slot b { display: block; font-size: 24px; font-weight: 800; color: #FF6FAE; line-height: 1.15; }
   .pyb-slot span { display: block; font-size: 11px; color: #B07A9E; font-weight: 700; }
+  /* 整体认读音节：只有一个槽，居中放宽一点 */
+  .pyb-row.single { justify-content: center; }
+  .pyb-row.single .pyb-slot { min-width: 168px; }
 
   .pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
   .pad.compact { grid-template-columns: repeat(7, 1fr); gap: 5px; }
@@ -1006,13 +1009,21 @@ function playAudioFile(src, fallback) {
     speak(fallback, 0.65);
   };
   try {
-    if (!pinyinAudio) pinyinAudio = new Audio();
-    pinyinAudio.onerror = fb;
-    pinyinAudio.pause();
-    pinyinAudio.currentTime = 0;
-    pinyinAudio.src = src;
-    const p = pinyinAudio.play();
-    if (p && p.catch) p.catch(fb);
+    // 每次点读都换一个新的 Audio 播放器：手机浏览器（iOS/微信）复用同一个
+    // <audio> 时，上一个录音可能还没停就被新 src 顶替，听起来像“点这个字却
+    // 读出上一个字”。换新播放器并停掉上一个，保证点哪个就读哪个。
+    const prev = pinyinAudio;
+    const a = new Audio();
+    pinyinAudio = a;
+    a.preload = 'auto';
+    a.onerror = fb;
+    a.src = src;
+    if (prev) { try { prev.pause(); } catch (e) {} }
+    const p = a.play();
+    if (p && p.catch) p.catch(e => {
+      if (e && e.name === 'AbortError') return;   // 被下一次点读打断，不算加载失败
+      fb();
+    });
   } catch (e) { fb(); }
 }
 function playPinyinSound(kind, key, fallback) {
@@ -1120,6 +1131,19 @@ function newPinyinBlendQuestion(progress = STEPS - 1) {
   const ymPool = Object.keys(YM_SAY).filter(y => !YM_PARTS[y]);   // 干扰项只用真正的韵母
   const pickN = (arr, n) => { const out = []; while (out.length < n) { const v = arr[rnd(0, arr.length - 1)]; if (!out.includes(v)) out.push(v); } return out; };
   const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rnd(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  // 整体认读音节（zhi chi shi ri zi ci si yi wu yu ye yue yuan yin yun ying）：
+  // 不拆声母、韵母、声调，只出一排带声调的整体认读音节让小朋友选。
+  if (WHOLE_SYLLABLES.has(pinyinBase(t.p))) {
+    const all = [];
+    for (const x of CHARS) {
+      if (x.p === t.p || !WHOLE_SYLLABLES.has(pinyinBase(x.p))) continue;
+      if (!all.some(o => o.p === x.p)) all.push({ p: x.p, c: x.c });   // 同一音节只留一个代表字
+    }
+    const wholeOpts = shuffle([{ p: t.p, c: t.c }, ...pickN(all, Math.min(3, all.length))]);
+    return { kind: 'pyblend', whole: true, top: null, parts: [null, null], flip: false,
+             char: t.c, pinyin: t.p, sm: t.sm, ym: t.ym, ymParts: null, tone: t.t,
+             wholeOpts, smOpts: [], ymOpts: [], toneOpts: [], answer: t.c };
+  }
   const ymParts = YM_PARTS[t.ym] || null;             // 三拼音节：介母 + 韵母
   // 干扰项优先选易混韵母：如 u/ang 配 ü/ong，ai 配 ao、ei、an，而不是完全随机。
   const targets = ymParts || [t.ym];
@@ -1160,7 +1184,7 @@ function layoutTrack() {
   const x = lanesEl.offsetLeft + START + STEPS * stepPx + RUNNER_W / 2 - 3;   // finishLine 以 .track 为定位父级，需加上 lanes 的偏移
   finishLine.style.left = x + 'px';
 }
-const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, pickSm: null, pickYm: null, pickYmParts: [], pickTone: null, showPy: false, done: false, lock: false }));
+const GROUPS = ANIMALS.map((a, i) => ({ ...a, no: i + 1, progress: 0, q: null, pick: null, pickSm: null, pickYm: null, pickYmParts: [], pickTone: null, pickWhole: null, showPy: false, done: false, lock: false }));
 let qTimers = new WeakMap();
 
 GROUPS.forEach(g => {
@@ -1214,7 +1238,7 @@ GROUPS.forEach((g, i) => {
   g.helpEl = el.querySelector('.btn.help');
   el.querySelector('.btn:not(.go):not(.help)').onclick = () => {
     if (g.done || g.lock || finished) return;
-    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; render(g);
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; render(g);
   };
   g.helpEl.onclick = () => openHelp(g);
   g.okEl.onclick = () => submit(g);
@@ -1346,7 +1370,7 @@ function pinyinDiagram(q, pick) {
   </div>`;
 }
 /* 拼音-分与合题图：上=汉字（拼音默认隐藏，点小眼睛显示）+ 点读；下=声母、韵母、完整拼音 三个槽 */
-function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
+function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy, pickWhole) {
   const slot = (val, filled, label, attrs = '') =>
     `<div class="pyb-slot${filled ? ' filled' : ''}${attrs ? ' clickable' : ''}"${attrs}><b>${val || '?'}</b><span>${label}</span></div>`;
   // 韵母槽：只有“② 选韵母”里选中正确的韵母才出现；
@@ -1372,6 +1396,22 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
   const eyeSvg = show => show
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  // 整体认读音节：不拆声母、韵母、声调，只有一个“整体认读音节”槽
+  if (q.whole) {
+    const picked = pickWhole || null;
+    return `<div class="pyb-wrap">
+      <div class="pyb-top" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}">
+        <b class="pyb-py${showPy ? '' : ' is-hidden'}">${q.pinyin}</b><i>${q.char}</i>
+        <span class="pyb-side">
+          <span>🔊 点击听</span>
+          <span class="pyb-eye" role="button" tabindex="0" title="${showPy ? '隐藏拼音' : '显示拼音'}" aria-label="显示或隐藏拼音">${eyeSvg(showPy)}</span>
+        </span>
+      </div>
+      <div class="pyb-row single">
+        ${slot(picked ? picked.p : '', !!picked, '整体认读音节', picked ? ` data-say="${picked.c}" data-kind="char" data-key="${picked.p}"` : '')}
+      </div>
+    </div>`;
+  }
   return `<div class="pyb-wrap">
     <div class="pyb-top" data-say="${q.char}" data-kind="char" data-key="${q.pinyin}">
       <b class="pyb-py${showPy ? '' : ' is-hidden'}">${q.pinyin}</b><i>${q.char}</i>
@@ -1392,8 +1432,8 @@ function pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy) {
     </div>
   </div>`;
 }
-function diagram(q, pick, pickSm, pickYm, pickTone, showPy) {
-  if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy);
+function diagram(q, pick, pickSm, pickYm, pickTone, showPy, pickWhole) {
+  if (q.kind === 'pyblend') return pinyinBlendDiagram(q, pickSm, pickYm, pickTone, showPy, pickWhole);
   if (q.kind === 'py') return pinyinDiagram(q, pick);
   const box = (x, y, val, isBlank) => {
     const cls = isBlank ? (pick !== null ? 'numbox filled' : 'numbox blank') : 'numbox';
@@ -1417,7 +1457,7 @@ function diagram(q, pick, pickSm, pickYm, pickTone, showPy) {
 /* 分与合翻转按钮：显示当前状态（分/合），图标与记分卡右对齐 */
 const FLIP_ICON = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M970.374065 454.543641H51.072319c-28.089776 0-51.072319 22.982544-51.072319 51.072319v2.553616c0 28.089776 22.982544 51.072319 51.072319 51.072319h919.301746c28.089776 0 51.072319-22.982544 51.072319-51.072319v-2.553616c0-28.089776-22.982544-51.072319-51.072319-51.072319zM303.880299 326.862843l199.182045-201.735661 181.306733 183.860349c20.428928 20.428928 51.072319 20.428928 71.501247 0 20.428928-20.428928 20.428928-53.625935 0-74.054863L538.812968 15.321696c-20.428928-20.428928-51.072319-20.428928-71.501247 0-5.107232 5.107232-5.107232 7.660848-7.660848 12.76808-2.553616 2.553616-7.660848 5.107232-10.214464 7.660847L232.379052 255.361596c-20.428928 20.428928-20.428928 53.625935 0 74.054863 20.428928 17.875312 51.072319 17.875312 71.501247-2.553616zM702.244389 720.119701l-183.860349 181.306733-201.735661-199.182045c-20.428928-20.428928-53.625935-20.428928-74.054863 0-20.428928 20.428928-20.428928 51.072319 0 51.072319l219.610973 217.057357c2.553616 2.553616 7.660848 5.107232 10.214464 7.660847 2.553616 2.553616 5.107232 7.660848 7.660847 10.214464 20.428928 20.428928 53.625935 20.428928 74.054863 0l219.610973-217.057356c20.428928-20.428928 20.428928-51.072319 0-71.501247-17.875312-20.428928-51.072319-20.428928-71.501247 0z"/></svg>`;
 function diagramHTML(g) {
-  const svg = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy);
+  const svg = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy, g.pickWhole);
   if (g.q.kind) return svg;
   const dis = (g.done || g.lock || finished) ? ' disabled' : '';
   return `<div class="diagram-wrap">${svg}<button type="button" class="flip-toggle flip-btn" aria-label="点击上下翻转" title="点击上下翻转"${dis}><span>切换</span>${FLIP_ICON}</button></div>`;
@@ -1451,6 +1491,24 @@ function renderPad(g) {
       const sel = picked ? picked.includes(v) : cur === v;   // 三拼音节可同时选中介母和韵母
       return `<div class="${cls}${toneBlank ? ' off' : ''}${sel ? ' sel' : ''}" data-slot="${slot}" data-val="${v}">${label}</div>`;
     }).join('') + '</div>';
+    // 整体认读音节：只出现一排带声调的选项，提示“选整体认读音节”
+    if (g.q.whole) {
+      g.padEl.innerHTML = `<div class="pyb-sections">
+        <div class="pyb-sec wide">${cap('选整体认读音节')}<div class="pad-grid">` +
+        g.q.wholeOpts.map(o => `<div class="key charKey${g.pickWhole && g.pickWhole.p === o.p ? ' sel' : ''}" data-whole="${o.p}">${o.p}</div>`).join('') +
+        `</div></div></div>`;
+      g.padEl.querySelectorAll('.key').forEach(k => {
+        k.onclick = () => {
+          if (g.done || g.lock || finished) return;
+          const o = g.q.wholeOpts.find(x => x.p === k.dataset.whole);
+          if (!o) return;
+          g.pickWhole = o;
+          playCharSound(o.p, o.c);                 // 点哪个就读哪个整体认读音节
+          render(g);
+        };
+      });
+      return;
+    }
     g.padEl.innerHTML = `<div class="pyb-sections">
       <div class="pyb-sec">${cap('① 选声母')}${grid(g.q.smOpts, 'sm')}</div>
       <div class="pyb-sec">${cap(g.q.ymParts ? '② 选韵母（点选 2 个）' : '② 选韵母')}${grid(g.q.ymOpts, 'ym')}</div>
@@ -1524,7 +1582,9 @@ function renderPad(g) {
 function render(g) {
   g.qEl.innerHTML = diagramHTML(g);
   renderPad(g);
-  g.okEl.disabled = g.q.kind === 'pyblend' ? !(g.pickSm && g.pickYm && g.pickTone) : g.pick === null;
+  g.okEl.disabled = g.q.kind === 'pyblend'
+    ? (g.q.whole ? !g.pickWhole : !(g.pickSm && g.pickYm && g.pickTone))
+    : g.pick === null;
   if (g.helpEl) {
     const py = !!g.q.kind;
     g.helpEl.style.display = py ? 'none' : '';
@@ -1551,7 +1611,7 @@ function makeCustomQuestion() {
 function resetGroup(g) {
   closeHelpIf(g);
   g.lock = false;
-  g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.showPy = false;
+  g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; g.showPy = false;
   g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion(g.progress);
   g.pick = null; render(g);
 }
@@ -1560,12 +1620,16 @@ function resetGroup(g) {
 let finished = false;
 function submit(g) {
   if (g.done || g.lock || finished) return;
-  if (g.q.kind === 'pyblend') { if (!g.pickSm || !g.pickYm || !g.pickTone) return; }
+  if (g.q.kind === 'pyblend') {
+    if (g.q.whole ? !g.pickWhole : (!g.pickSm || !g.pickYm || !g.pickTone)) return;
+  }
   else if (g.pick === null) return;
   g.lock = true;
   g.okEl.disabled = true;
   const ok = g.q.kind === 'pyblend'
-    ? (g.pickSm === g.q.sm && g.pickYm === g.q.ym && g.pickTone === g.q.tone)
+    ? (g.q.whole
+        ? !!(g.pickWhole && g.pickWhole.p === g.q.pinyin)
+        : (g.pickSm === g.q.sm && g.pickYm === g.q.ym && g.pickTone === g.q.tone))
     : (g.pick === g.q.answer);
   if (ok) {
     beep(true);
@@ -1602,7 +1666,7 @@ function submit(g) {
     const timer = setTimeout(() => {
       g.el.classList.remove('wrong');
       g.lock = false;                                   // 答错后解锁，否则这组再也答不了题
-      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; render(g);
+      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; render(g);
     }, 620);
     qTimers.set(g, timer);
   }
