@@ -346,6 +346,90 @@
     min-width: 18px; height: 18px; padding: 0 3px; border-radius: 999px; color: #fff;
     font-size: 10px; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff;
   }
+
+  /* ===== 3 天试用 · 付费解锁弹窗 ===== */
+  .pay-mask {
+    position: fixed; inset: 0; z-index: 9999; display: none;
+    align-items: center; justify-content: center; padding: 14px; overflow: auto;
+    background: rgba(30, 20, 45, .62);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .pay-mask.show { display: flex; }
+  body.pay-locked { overflow: hidden; }
+  .pay-card {
+    width: 100%; max-width: 400px; max-height: calc(100vh - 28px);
+    overflow: auto; -webkit-overflow-scrolling: touch;
+    padding: 18px 18px 14px; border-radius: 24px; background: #FFFDFE;
+    text-align: center; box-shadow: 0 24px 70px rgba(20, 10, 40, .35);
+    animation: payIn .22s ease-out;
+  }
+  @keyframes payIn {
+    from { transform: translateY(12px) scale(.97); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+  }
+  .pay-badge { font-size: 30px; line-height: 1; margin-bottom: 2px; }
+  .pay-title { font-size: 20px; font-weight: 900; color: #3D3350; margin-bottom: 3px; }
+  .pay-sub { font-size: 13px; color: #8A7A9C; margin-bottom: 12px; }
+  .pay-sub b { color: #FF6FAE; }
+  .pay-qr-box {
+    position: relative; width: clamp(150px, 46vw, 186px); height: clamp(150px, 46vw, 186px);
+    margin: 0 auto 9px; padding: 8px; border-radius: 16px; background: #fff;
+    border: 2px solid #FFE0EF; box-shadow: 0 6px 18px rgba(255, 120, 170, .14);
+  }
+  .pay-qr {
+    width: 100%; height: 100%; display: block; object-fit: contain;
+    border-radius: 10px; -webkit-touch-callout: default; user-select: auto;
+  }
+  .pay-qr-box.no-img .pay-qr { display: none; }
+  .pay-qr-ph {
+    display: none; position: absolute; inset: 8px; padding: 8px;
+    align-items: center; justify-content: center; flex-direction: column;
+    border-radius: 10px; border: 2px dashed #FFC2E0; background: #FFF7FB;
+    color: #B99AB0; font-size: 12px; font-weight: 700; line-height: 1.7; text-align: center;
+  }
+  .pay-qr-box.no-img .pay-qr-ph { display: flex; }
+  .pay-hint { font-size: 12.5px; font-weight: 700; line-height: 1.6; color: #E2568F; margin-bottom: 9px; }
+  .pay-order {
+    display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+    font-size: 12px; color: #8A7A9C; margin-bottom: 10px;
+  }
+  .pay-order b { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; letter-spacing: .5px; color: #3D3350; }
+  .pay-mini {
+    border: 0; border-radius: 999px; padding: 4px 10px; background: #F4ECF9;
+    color: #7A5C93; font-size: 11.5px; font-weight: 700; cursor: pointer;
+  }
+  .pay-btn {
+    display: block; width: 100%; border: 0; border-radius: 14px; padding: 12px;
+    font-size: 15px; font-weight: 800; color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, #FF9CCB, #FF6FAE);
+    box-shadow: 0 8px 18px rgba(255, 111, 174, .35);
+  }
+  .pay-btn:disabled { opacity: .6; box-shadow: none; }
+  .pay-btn-sm { width: auto; flex: none; padding: 0 14px; }
+  .pay-contact {
+    margin-top: 10px; padding: 10px 12px; border-radius: 14px; text-align: left;
+    background: #FFF5FA; border: 1.5px solid #FFE0EF;
+    font-size: 12px; line-height: 1.75; color: #7A5C93;
+  }
+  .pay-contact b { color: #E2568F; }
+  .pay-contact .pay-mini { margin-top: 6px; }
+  .pay-line { display: flex; align-items: center; gap: 10px; margin: 13px 0 8px; color: #B9A7C8; font-size: 11.5px; }
+  .pay-line::before, .pay-line::after { content: ''; flex: 1; height: 1px; background: #F0E4F5; }
+  .pay-code-row { display: flex; gap: 8px; }
+  .pay-input {
+    flex: 1; min-width: 0; padding: 10px 11px; outline: none;
+    border: 2px solid #F0E4F5; border-radius: 12px; background: #fff;
+    color: #3D3350; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace;
+    user-select: text;
+  }
+  .pay-input:focus { border-color: #FFC2E0; }
+  .pay-msg { min-height: 17px; margin-top: 7px; font-size: 12px; font-weight: 700; color: #E2568F; }
+  .pay-foot { margin-top: 7px; font-size: 10.5px; color: #B9A7C8; }
+  .pay-preview { margin-top: 10px; font-size: 11px; color: #B9A7C8; }
+  .pay-preview button {
+    border: 0; padding: 4px; background: none; color: #8A7A9C;
+    font-size: 11px; cursor: pointer; text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -454,6 +538,34 @@
     <div class="tool warn" id="chartClose">✕ 关闭</div>
   </div>
   <div class="chart-body" id="chartBody"></div>
+</div>
+
+<!-- 3 天试用到期 · 付费解锁 -->
+<div class="pay-mask" id="payMask" aria-hidden="true">
+  <div class="pay-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+    <div class="pay-badge">🔒</div>
+    <div class="pay-title" id="payTitle">3 天试用已结束</div>
+    <div class="pay-sub">扫码支付 <b>9.9 元</b>，解锁一年完整练习</div>
+    <div class="pay-qr-box no-img" id="payQrBox">
+      <img class="pay-qr" id="payQr" alt="微信收款码">
+      <div class="pay-qr-ph" id="payQrPh">收款码加载中…</div>
+    </div>
+    <div class="pay-hint" id="payHint">长按上方二维码 → 识别图中二维码 → 支付 9.9 元</div>
+    <div class="pay-order">订单号 <b id="payOrder">—</b><button type="button" class="pay-mini" id="payCopyOrder">复制</button></div>
+    <button type="button" class="pay-btn" id="payPaid">我已付款，查看领码方式</button>
+    <div class="pay-contact" id="payContact" hidden>
+      <div>付款后加客服微信 <b id="payWxId">—</b>，发送 <b>订单号 + 微信交易单号</b>，核对后发激活码。</div>
+      <button type="button" class="pay-mini" id="payCopyWx">复制微信号</button>
+    </div>
+    <div class="pay-line"><span>已有激活码</span></div>
+    <div class="pay-code-row">
+      <input class="pay-input" id="payCodeInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="YLZ-XXXX-XXXX-XXXX">
+      <button type="button" class="pay-btn pay-btn-sm" id="payActivate">激活</button>
+    </div>
+    <div class="pay-msg" id="payMsg"></div>
+    <div class="pay-foot">激活码有效期一年 · 仅限本人使用</div>
+    <div class="pay-preview" id="payPreview" hidden>预览模式 · <button type="button" id="payPreviewClose">关闭预览</button></div>
+  </div>
 </div>
 
 <script>
@@ -2121,6 +2233,330 @@ GROUPS.forEach(paintAvatar);
 GROUPS.forEach(g => placeRunner(g, false));
 GROUPS.forEach(resetGroup);
 syncStations();
+
+/* ---------------- 3 天试用 · 付费解锁 ---------------- */
+const PAY_CFG = {
+  days: 3,                       // 试用天数：从首次打开起算 3 天
+  price: '9.9',
+  qrSrc: 'img/wechat-pay.png',   // 微信个人收款码（静态码图片）
+  wxId: 'YOUR_WECHAT_ID',        // TODO: 换成你的客服微信号
+  // 激活码只存 SHA-256 哈希，不存明文。
+  // 生成：node tools/gen-codes.js 2027-11-11 YLZ-XXXX-XXXX-XXXX
+  codes: {
+    '69dc84f5457380ed993e0f94dc716e8aaad9ac0e00363200f5f76743d7e69d85': '2027-11-11',
+    '3c9715e0effb37565ad2cd05248e513deede75954544cc308919854cbc51b19a': '2027-11-11',
+    '61320e35b4a1f0bdb1e53c157bc8c562380f507847e507c04af8f938085ac3ff': '2027-11-11'
+  }
+};
+const TRIAL_MS = PAY_CFG.days * 24 * 60 * 60 * 1000;
+const TRIAL_KEY = 'ylz.trial.v1';
+const TRIAL_CK = 'ylz_trial';
+const DEMO_PAYWALL = new URLSearchParams(location.search).get('paywall') === 'demo';
+
+const payMask = document.getElementById('payMask');
+const pay$ = id => document.getElementById(id);
+const normCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/* 纯 JS SHA-256：微信内置浏览器不一定有 crypto.subtle，这里自带一份 */
+function paySha256(str) {
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 0x80) bytes.push(c);
+    else if (c < 0x800) { bytes.push(0xc0 | (c >> 6), 0x80 | (c & 63)); }
+    else if (c < 0x10000) { bytes.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63)); }
+    else { bytes.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63)); }
+  }
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  const hi = Math.floor(bitLen / 4294967296), lo = bitLen >>> 0;
+  bytes.push((hi >>> 24) & 255, (hi >>> 16) & 255, (hi >>> 8) & 255, hi & 255,
+             (lo >>> 24) & 255, (lo >>> 16) & 255, (lo >>> 8) & 255, lo & 255);
+  const w = new Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let i = 0; i < bytes.length; i += 64) {
+    for (let t = 0; t < 16; t++) {
+      w[t] = (bytes[i + t * 4] << 24) | (bytes[i + t * 4 + 1] << 16) | (bytes[i + t * 4 + 2] << 8) | bytes[i + t * 4 + 3];
+    }
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+      const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+    }
+    let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[t] + w[t]) | 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+    H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+}
+
+let trial = null;
+let clockOffset = 0, clockSynced = false, lastSync = 0;
+let demoPay = DEMO_PAYWALL;
+let payOpen = false;
+const nowT = () => Date.now() + clockOffset;
+
+function parseTrial(raw) {
+  try {
+    const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (o && typeof o.first === 'number' && isFinite(o.first) && o.first > 0) return o;
+  } catch (e) {}
+  return null;
+}
+function lsGet() { try { return localStorage.getItem(TRIAL_KEY); } catch (e) { return null; } }
+function ckGet() {
+  try {
+    const m = document.cookie.match(/(?:^|; )ylz_trial=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (e) { return null; }
+}
+function ckSet(raw) {
+  try { document.cookie = TRIAL_CK + '=' + encodeURIComponent(raw) + '; Max-Age=' + (365 * 24 * 3600) + '; Path=/; SameSite=Lax'; } catch (e) {}
+}
+function idbGet() {
+  return new Promise(resolve => {
+    try {
+      const req = indexedDB.open('ylz-trial', 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore('kv'); } catch (e) {} };
+      req.onerror = () => resolve(null);
+      req.onsuccess = () => {
+        try {
+          const db = req.result;
+          const g = db.transaction('kv', 'readonly').objectStore('kv').get('state');
+          g.onsuccess = () => resolve(g.result || null);
+          g.onerror = () => resolve(null);
+        } catch (e) { resolve(null); }
+      };
+    } catch (e) { resolve(null); }
+  });
+}
+function idbSet(v) {
+  try {
+    const req = indexedDB.open('ylz-trial', 1);
+    req.onupgradeneeded = () => { try { req.result.createObjectStore('kv'); } catch (e) {} };
+    req.onsuccess = () => {
+      try {
+        const tx = req.result.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(v, 'state');
+      } catch (e) {}
+    };
+  } catch (e) {}
+}
+function randId(n) {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  try {
+    const b = new Uint8Array(n);
+    crypto.getRandomValues(b);
+    for (let i = 0; i < n; i++) out += A[b[i] % A.length];
+  } catch (e) {
+    for (let i = 0; i < n; i++) out += A[Math.floor(Math.random() * A.length)];
+  }
+  return out;
+}
+function mergeTrial(list) {
+  let first = 0, last = 0, code = '', order = '';
+  for (const s of list) {
+    if (!s) continue;
+    if (!first || s.first < first) first = s.first;
+    if (s.last > last) last = s.last;
+    if (!code && s.code) code = s.code;
+    if (!order && s.order) order = s.order;
+  }
+  return { first, last, code, order };
+}
+function saveTrial(withIdb) {
+  if (!trial) return;
+  const raw = JSON.stringify(trial);
+  try { localStorage.setItem(TRIAL_KEY, raw); } catch (e) {}
+  ckSet(raw);
+  if (withIdb) idbSet(trial);
+}
+async function syncClock() {
+  try {
+    const base = location.href.split('#')[0];
+    const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + '_t=' + Date.now();
+    const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    const d = r.headers.get('date');
+    if (d) {
+      const t = Date.parse(d);
+      if (isFinite(t)) {
+        clockOffset = t - Date.now();
+        clockSynced = true;
+        lastSync = Date.now();
+      }
+    }
+  } catch (e) {}
+}
+function codeExpiry() {
+  if (!trial || !trial.code) return null;
+  const exp = PAY_CFG.codes[paySha256(normCode(trial.code))];
+  if (!exp) return null;
+  const end = Date.parse(exp + 'T23:59:59');
+  return (isFinite(end) && nowT() <= end) ? exp : null;
+}
+function shouldPay() {
+  if (demoPay) return true;
+  if (codeExpiry()) return false;
+  if (!trial) return false;
+  if (trial.tampered) return true;
+  return nowT() - trial.first >= TRIAL_MS;
+}
+function payHintText() {
+  const ua = navigator.userAgent;
+  if (/MicroMessenger/i.test(ua)) return '长按上方二维码 → 识别图中二维码 → 输入 ' + PAY_CFG.price + ' 元付款';
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return '长按保存二维码 → 打开微信 → 扫一扫 → 右上角相册 → 选择这张图';
+  return '打开手机微信，扫一扫屏幕上的二维码付款';
+}
+function showPay() {
+  if (payOpen) return;
+  payOpen = true;
+  pay$('payOrder').textContent = trial ? trial.order : '—';
+  pay$('payWxId').textContent = PAY_CFG.wxId;
+  pay$('payHint').textContent = payHintText();
+  pay$('payPreview').hidden = !demoPay;
+  pay$('payMsg').textContent = demoPay ? '预览模式：用户 3 天试用到期后会看到这个窗口。' : '';
+  payMask.classList.add('show');
+  payMask.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('pay-locked');
+  try { if (pinyinAudio) pinyinAudio.pause(); } catch (e) {}
+  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+  try { if (!demoPay) stopTimer(); } catch (e) {}
+}
+function hidePay() {
+  if (!payOpen) return;
+  payOpen = false;
+  payMask.classList.remove('show');
+  payMask.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('pay-locked');
+}
+function refreshPay() { if (shouldPay()) showPay(); else hidePay(); }
+function copyText(text, btn) {
+  const done = () => { const old = btn.textContent; btn.textContent = '已复制'; setTimeout(() => { btn.textContent = old; }, 1200); };
+  const fallback = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); ta.remove(); done();
+    } catch (e) { btn.textContent = '复制失败'; }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+  else fallback();
+}
+function activatePay() {
+  const input = pay$('payCodeInput');
+  const msg = pay$('payMsg');
+  const n = normCode(input.value);
+  if (!n) { msg.textContent = '请输入激活码'; return; }
+  const exp = PAY_CFG.codes[paySha256(n)];
+  if (!exp) { msg.textContent = '激活码无效，请检查后重试'; return; }
+  const end = Date.parse(exp + 'T23:59:59');
+  if (!isFinite(end) || nowT() > end) { msg.textContent = '这个激活码已过期'; return; }
+  trial = trial || {};
+  trial.code = n;
+  trial.tampered = false;
+  trial.last = Math.max(trial.last || 0, nowT());
+  saveTrial(true);
+  demoPay = false;
+  msg.textContent = '激活成功，正在进入…';
+  input.value = '';
+  setTimeout(() => {
+    hidePay();
+    try { resetAll(); } catch (e) {}
+  }, 500);
+}
+function bootTrial() {
+  const qr = pay$('payQr'), box = pay$('payQrBox');
+  qr.onload = () => box.classList.remove('no-img');
+  qr.onerror = () => {
+    box.classList.add('no-img');
+    pay$('payQrPh').innerHTML = '收款码未找到<br><small>请把图片放到 img/wechat-pay.png</small>';
+  };
+  qr.src = PAY_CFG.qrSrc;
+  pay$('payCopyOrder').onclick = () => copyText(pay$('payOrder').textContent, pay$('payCopyOrder'));
+  pay$('payCopyWx').onclick = () => copyText(PAY_CFG.wxId, pay$('payCopyWx'));
+  pay$('payPaid').onclick = () => {
+    const c = pay$('payContact');
+    c.hidden = !c.hidden;
+    if (!c.hidden) c.scrollIntoView({ block: 'nearest' });
+  };
+  pay$('payActivate').onclick = activatePay;
+  pay$('payCodeInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); activatePay(); }
+  });
+  pay$('payPreviewClose').onclick = () => { demoPay = false; hidePay(); };
+
+  const now = Date.now();
+  let m = mergeTrial([parseTrial(lsGet()), parseTrial(ckGet())]);
+  const futureFirst = m.first > now + 10 * 60 * 1000;
+  const futureLast = m.last > now + 10 * 60 * 1000;
+  if (!m.first || futureFirst) m.first = now;
+  if (!m.last || futureLast) m.last = now;
+  if (!m.order) m.order = 'YLZ-' + randId(8);
+  m.last = Math.max(m.last, now);
+  // 本地时间被回拨（记录的最后使用时间在未来）→ 先锁；有服务器时间时以服务器为准
+  m.tampered = futureLast && !futureFirst;
+  trial = m;
+  saveTrial(false);
+  refreshPay();
+
+  // 异步补全 IndexedDB 里的记录 + 校准服务器时间
+  (async () => {
+    const [idb] = await Promise.all([idbGet(), syncClock()]);
+    const n = nowT();
+    const m2 = mergeTrial([parseTrial(lsGet()), parseTrial(ckGet()), idb]);
+    const futureFirst2 = m2.first > n + 10 * 60 * 1000;
+    const futureLast2 = m2.last > n + 10 * 60 * 1000;
+    m2.tampered = clockSynced ? false : (m.tampered || (futureLast2 && !futureFirst2));
+    if (!m2.first || futureFirst2) m2.first = n;
+    if (!m2.last || futureLast2) m2.last = n;
+    if (!m2.order) m2.order = 'YLZ-' + randId(8);
+    m2.last = Math.max(m2.last, n);
+    trial = m2;
+    saveTrial(true);
+    refreshPay();
+  })();
+
+  setInterval(() => {
+    if (!trial) return;
+    trial.last = Math.max(trial.last, nowT());
+    saveTrial(false);
+    refreshPay();
+  }, 30000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (!trial) return;
+    trial.last = Math.max(trial.last, nowT());
+    saveTrial(false);
+    refreshPay();
+    if (Date.now() - lastSync > 10 * 60 * 1000) syncClock().then(refreshPay);
+  });
+}
+bootTrial();
 </script>
 </body>
 </html>
