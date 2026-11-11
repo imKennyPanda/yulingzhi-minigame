@@ -1280,12 +1280,12 @@ function preloadTones(ym) {
 function preloadQuestionAudio(q) {
   if (!q || !q.kind) return;
   if (q.kind === 'pyblend') {
-    // 按孩子的操作顺序预热：先声母、韵母，再整字，最后声调（选韵母时再补对应韵母的 4 个声调）
+    // 按孩子的操作顺序预热：声母 → 韵母 → 声调（选韵母时再补对应韵母的 4 个声调）→ 整字
     (q.smOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('sm', v)));
     (q.ymOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('ym', v)));
-    preloadAudio(charAudioSrc(q.pinyin));
     if (q.whole) (q.wholeOpts || []).forEach(o => preloadAudio(charAudioSrc(o.p)));
     else preloadTones(q.ym);
+    preloadAudio(charAudioSrc(q.pinyin));
   } else if (q.kind === 'py') {
     (q.opts || []).forEach(ch => { const py = CHAR_PINYIN[ch]; if (py) preloadAudio(charAudioSrc(py)); });
     preloadAudio(charAudioSrc(q.pinyin));
