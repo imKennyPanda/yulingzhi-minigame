@@ -354,8 +354,8 @@
   }
   .py-blend:hover { filter: brightness(1.07); }
   .key.charKey { font-size: 30px; }
-  .key.toneKey { font-size: 20px; letter-spacing: .5px; line-height: 1.1; row-gap: 1px; }
-  .key.toneKey b { font-size: 24px; letter-spacing: .5px; }
+  .key.toneKey { font-size: 30px; letter-spacing: .5px; line-height: 1.1; row-gap: 1px; }
+  .key.toneKey b { font-size: 30px; letter-spacing: .5px; }
 
   /* 拼音-分与合 题图 */
   .pyb-wrap { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -378,8 +378,8 @@
   .pyb-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
   .pyb-sec.wide { grid-column: 1 / -1; }
   .pyb-row { display: flex; gap: 26px; }
-  /* 整体认读音节：只有一个槽，居中放宽一点 */
-  .pyb-row.single { justify-content: center; }
+  /* 整体认读音节：只有一个槽，居中放宽一点，并与上方文字按钮留出距离 */
+  .pyb-row.single { justify-content: center; margin-top: 32px; }
   .pyb-row.single .pyb-slot { min-width: 182px; }
   .pyb-slot {
     min-width: 92px; padding: 4px 0 4px; border-radius: 14px; text-align: center;
@@ -1206,57 +1206,161 @@ if ('speechSynthesis' in window) {
   pickVoice();
   speechSynthesis.onvoiceschanged = pickVoice;
 }
-function speak(text, rate) {
-  if (!('speechSynthesis' in window)) return;
+let ac = null;                         // Web Audio 提示音；长时间无操作后需要 resume
+const audioCache = new Map();          // 缓存每个音频的播放器，避免每次点击都重新加载
+function unlockAudio() {
+  try {
+    if ('speechSynthesis' in window && speechSynthesis.paused) speechSynthesis.resume();
+  } catch (e) {}
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      if (!ac) ac = new AC();
+      if (ac.state === 'suspended') ac.resume();
+    }
+  } catch (e) {}
+}
+/* 手机/桌面浏览器在长时间无操作后可能挂起音频；每次触摸、按键或回到页面时恢复。 */
+['pointerdown', 'touchstart', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, unlockAudio, { passive: true })
+);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  unlockAudio();
+  // 回到页面时重新预热当前题目的录音，避免浏览器后台回收后点按钮要等加载
+  try { GROUPS.forEach(g => { if (g && g.q) preloadQuestionAudio(g.q); }); } catch (e) {}
+});
+function speak(text, rate, onDone) {
+  if (!('speechSynthesis' in window) || !text) { if (onDone) onDone(); return; }
   try {
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    if (speechSynthesis.paused) speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(String(text));
     u.lang = 'zh-CN';
     if (zhVoice) u.voice = zhVoice;
     u.rate = rate || 0.65;               // 放慢一点，单字发音更完整
+    let done = false;
+    const finish = () => { if (done) return; done = true; if (onDone) onDone(); };
+    u.onend = finish;
+    u.onerror = finish;
     speechSynthesis.speak(u);
-  } catch (e) {}
+  } catch (e) { if (onDone) onDone(); }
 }
 /* ---------------- 拼音标准录音（本地 mp3，失败时回退到系统语音合成） ---------------- */
 const YM_AUDIO_NAME = { 'ü': 'v', 'üe': 've', 'ün': 'vn', 'üan': 'van' };   // 音频文件名用 v 表示 ü
 let pinyinAudio = null;
+let pinyinAudioDone = null;            // 当前录音播完/被打断时的回调（答对后等 1 秒再出下一题）
 let audioSeq = 0;
-function playAudioFile(src, fallback) {
+const MAX_AUDIO_CACHE = 180;           // 缓存上限：玩久了也不会堆积几百个播放器
+function trimAudioCache() {
+  if (audioCache.size <= MAX_AUDIO_CACHE) return;
+  for (const [k, a] of audioCache) {
+    if (audioCache.size <= MAX_AUDIO_CACHE) break;
+    if (a === pinyinAudio || !a.paused) continue;   // 正在播的不能删
+    try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {}
+    audioCache.delete(k);
+  }
+}
+function audioFor(src) {
+  let a = audioCache.get(src);
+  if (!a) {
+    a = new Audio();
+    a.preload = 'auto';
+    a.src = src;
+    audioCache.set(src, a);
+    trimAudioCache();
+  }
+  return a;
+}
+function preloadAudio(src) {
+  if (!src) return;
+  try {
+    const a = audioFor(src);
+    if (a.readyState === 0) a.load();
+  } catch (e) {}
+}
+function pinyinAudioSrc(kind, key) {
+  const name = kind === 'sm' ? key : (YM_AUDIO_NAME[key] || key);
+  return `audio/${kind}/${name}.mp3`;
+}
+/* 声调卡读“韵母 + 声调”的纯韵母录音，例如 un 的第一声读 wēn，而不是“村”。
+   ong 没有零声母音节，ong1/3/4 用纯韵母录音；ong2 由 tong2 裁掉声母 t 后得到纯 óng。 */
+function toneAudioSrc(ym, tone) {
+  const name = YM_AUDIO_NAME[ym] || ym;
+  const file = (name === 'ong' && tone === 2) ? 'ong2-pure' : `${name}${tone}`;
+  return `audio/tone/${file}.mp3`;
+}
+function playAudioFile(src, fallback, onDone) {
+  unlockAudio();
+  if (pinyinAudio && pinyinAudio !== audioCache.get(src)) {
+    try { pinyinAudio.pause(); } catch (e) {}    // 不叠音：新声音打断旧声音
+  }
   const seq = ++audioSeq;
+  let finished = false;
   let fellBack = false;
+  let watchdog = 0;
+  let a = null;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    if (watchdog) { clearTimeout(watchdog); watchdog = 0; }
+    if (pinyinAudioDone === finish) pinyinAudioDone = null;
+    if (onDone) onDone();
+  };
+  // 上一个录音若还在等“播完”，先通知它结束，避免它把整组卡住
+  if (pinyinAudioDone) {
+    const prevDone = pinyinAudioDone;
+    pinyinAudioDone = null;
+    prevDone();
+  }
   const fb = () => {
-    if (fellBack || seq !== audioSeq) return;   // 已被下一次点读取代，不再回退
+    if (finished || fellBack || seq !== audioSeq) return;   // 已被下一次点读取代，不再回退
     fellBack = true;
-    speak(fallback, 0.65);
+    try { if (a) a.pause(); } catch (e) {}
+    if (fallback) speak(fallback, 0.65, finish);
+    else finish();
+    if (watchdog) clearTimeout(watchdog);
+    watchdog = setTimeout(finish, 5000);   // 兜底：语音合成没有回调时不卡住
   };
   try {
-    // 每次点读都换一个新的 Audio 播放器：手机浏览器（iOS/微信）复用同一个
-    // <audio> 时，上一个录音可能还没停就被新 src 顶替，听起来像“点这个字却
-    // 读出上一个字”。换新播放器并停掉上一个，保证点哪个就读哪个。
-    const prev = pinyinAudio;
-    const a = new Audio();
+    // 按 src 缓存播放器：同一个音只加载一次；不同音用不同播放器，不会串音。
+    a = audioFor(src);
     pinyinAudio = a;
-    a.preload = 'auto';
+    pinyinAudioDone = finish;
+    a.onended = finish;
     a.onerror = fb;
-    a.src = src;
-    if (prev) { try { prev.pause(); } catch (e) {} }
+    try { a.pause(); a.currentTime = 0; } catch (e) {}
     const p = a.play();
     if (p && p.catch) p.catch(e => {
       if (e && e.name === 'AbortError') return;   // 被下一次点读打断，不算加载失败
       fb();
     });
+    watchdog = setTimeout(finish, 5000);   // 兜底：录音一直不结束（或被打断）时也能继续
   } catch (e) { fb(); }
 }
-function playPinyinSound(kind, key, fallback) {
-  const name = kind === 'sm' ? key : (YM_AUDIO_NAME[key] || key);
-  playAudioFile(`audio/${kind}/${name}.mp3`, fallback);
+function playPinyinSound(kind, key, fallback, onDone) {
+  playAudioFile(pinyinAudioSrc(kind, key), fallback, onDone);
 }
-/* 声调卡读“韵母 + 声调”的纯韵母录音，例如 un 的第一声读 wēn，而不是“村”。
-   ong 没有零声母音节，ong1/3/4 用纯韵母录音；ong2 由 tong2 裁掉声母 t 后得到纯 óng。 */
-function playToneSound(ym, tone, fallback) {
-  const name = YM_AUDIO_NAME[ym] || ym;
-  const file = (name === 'ong' && tone === 2) ? 'ong2-pure' : `${name}${tone}`;
-  playAudioFile(`audio/tone/${file}.mp3`, fallback);
+function playToneSound(ym, tone, fallback, onDone) {
+  playAudioFile(toneAudioSrc(ym, tone), fallback, onDone);
+}
+/* 提前加载当前题会用到的录音，点按钮时直接从缓存播放，避免 1-2 秒延迟。 */
+function preloadQuestionAudio(q) {
+  if (!q || !q.kind) return;
+  if (q.kind === 'pyblend') {
+    (q.smOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('sm', v)));
+    (q.ymOpts || []).forEach(v => preloadAudio(pinyinAudioSrc('ym', v)));
+    if (q.whole) {
+      (q.wholeOpts || []).forEach(o => preloadAudio(charAudioSrc(o.p)));
+    } else {
+      const yms = new Set([q.ym, ...(q.ymOpts || [])]);
+      yms.forEach(ym => { for (let t = 1; t <= 4; t++) preloadAudio(toneAudioSrc(ym, t)); });
+    }
+    preloadAudio(charAudioSrc(q.pinyin));
+  } else if (q.kind === 'py') {
+    (q.opts || []).forEach(ch => { const py = CHAR_PINYIN[ch]; if (py) preloadAudio(charAudioSrc(py)); });
+    preloadAudio(charAudioSrc(q.pinyin));
+  }
 }
 /* 汉字读音改用整音节录音：和声调卡同源同音色，长度也一致。
    例如 妈 mā -> audio/char/ma1.mp3、女 nǚ -> audio/char/nv3.mp3。 */
@@ -1277,8 +1381,11 @@ function charAudioName(pinyin) {
   }
   return out + tone;
 }
-function playCharSound(pinyin, fallback) {
-  playAudioFile(`audio/char/${charAudioName(pinyin)}.mp3`, fallback);
+function charAudioSrc(pinyin) {
+  return `audio/char/${charAudioName(pinyin)}.mp3`;
+}
+function playCharSound(pinyin, fallback, onDone) {
+  playAudioFile(charAudioSrc(pinyin), fallback, onDone);
 }
 /* 16 个整体认读音节：不拆声母、韵母，直接按完整带调拼音读。 */
 const WHOLE_SYLLABLES = new Set([
@@ -1836,9 +1943,11 @@ function makeCustomQuestion() {
 }
 function resetGroup(g) {
   closeHelpIf(g);
+  g.seq = (g.seq || 0) + 1;              // 作废上一题还没执行的“延迟出下一题”
   g.lock = false;
   g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; g.showPy = false;
   g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion(g.progress);
+  preloadQuestionAudio(g.q);
   g.pick = null; render(g);
 }
 
@@ -1859,7 +1968,8 @@ function submit(g) {
     : (g.pick === g.q.answer);
   if (ok) {
     beep(true);
-    if (g.q.kind === 'py' || g.q.kind === 'pyblend') playCharSound(g.q.pinyin, g.q.char);  // 拼音答对：点读该字巩固发音
+    const seq = g.seq;
+    const isPinyin = g.q.kind === 'py' || g.q.kind === 'pyblend';
     g.el.classList.add('right');
     g.progress = Math.min(STEPS, g.progress + 1);
     g.scEl.innerHTML = `${g.progress}<small>/10</small>`;
@@ -1871,9 +1981,30 @@ function submit(g) {
     p.style.top = (g.runEl.parentElement.offsetTop + 16) + 'px';
     lanesEl.appendChild(p);
     setTimeout(() => p.remove(), 1100);
-    const timer = setTimeout(() => { g.el.classList.remove('right'); resetGroup(g); }, 700);
-    qTimers.set(g, timer);
-    if (g.progress >= STEPS) { g.done = true; setTimeout(() => win(g), 900); }
+    const isFinal = g.progress >= STEPS;
+    if (isFinal) g.done = true;
+
+    const advance = () => {
+      if (seq !== g.seq) return;              // 期间被重置过，丢弃这次延迟
+      g.el.classList.remove('right');
+      if (isFinal) win(g); else resetGroup(g);
+    };
+    const later = (fn, wait) => {
+      const timer = setTimeout(() => { if (seq === g.seq) fn(); }, wait);
+      qTimers.set(g, timer);
+    };
+    if (isPinyin) {
+      // 播报完正确答案，再停 1 秒出下一题
+      let fired = false;
+      const once = () => {
+        if (fired || seq !== g.seq) return; fired = true;
+        later(advance, 1000);
+      };
+      playCharSound(g.q.pinyin, g.q.char, once);   // 拼音答对：点读该字巩固发音
+      setTimeout(once, 3500);                 // 兜底：音频异常时也不卡住
+    } else {
+      later(advance, isFinal ? 900 : 700);
+    }
   } else {
     beep(false);
     g.el.classList.add('wrong');
@@ -1898,8 +2029,10 @@ function submit(g) {
 }
 
 /* ---------------- 结算 ---------------- */
+let canResume = false;                    // 冲线夺冠时，可让没到终点的小组继续玩
 function win(g, reason) {
   if (finished) return; finished = true;
+  canResume = !reason;
   closeHelp();
   stopTimer();
   GROUPS.forEach(group => { if (qTimers.has(group)) clearTimeout(qTimers.get(group)); });
@@ -2060,7 +2193,23 @@ document.getElementById('btnRule').onclick = () => {
   document.getElementById('maskRule').classList.add('show');
 };
 document.getElementById('closeRule').onclick = () => document.getElementById('maskRule').classList.remove('show');
-document.getElementById('closeWin').onclick = () => document.getElementById('maskWin').classList.remove('show');
+document.getElementById('closeWin').onclick = () => {
+  document.getElementById('maskWin').classList.remove('show');
+  if (canResume) resumeWatch();
+};
+function resumeWatch() {
+  canResume = false;
+  finished = false;
+  GROUPS.forEach(g => {
+    if (qTimers.has(g)) { clearTimeout(qTimers.get(g)); qTimers.delete(g); }
+    if (g.done) return;                   // 已冲线的小组保持成绩
+    g.lock = false;
+    g.el.classList.remove('right', 'wrong');
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null;
+    render(g);
+  });
+  if (MODE === 'challenge' && timeLeft > 0) startTimer(timeLeft);   // 限时赛接着剩余时间
+}
 document.getElementById('againWin').onclick = () => { document.getElementById('maskWin').classList.remove('show'); resetAll(); };
 document.getElementById('btnReset').onclick = () => resetAll();
 document.querySelectorAll('#diff span').forEach(s => {
@@ -2074,6 +2223,7 @@ document.querySelectorAll('#diff span').forEach(s => {
 });
 function resetAll() {
   finished = false;
+  canResume = false;
   usedQKeys.clear();
   rollPinyinLadder();                 // 每局重新随机难度台阶
   GROUPS.forEach(g => {
@@ -2086,14 +2236,16 @@ function resetAll() {
 }
 
 /* ---------------- 音效 ---------------- */
-let sndOn = true, ac = null;
+let sndOn = true;
 document.getElementById('btnSound').onclick = e => {
   sndOn = !sndOn; e.currentTarget.textContent = sndOn ? '🔊 音效' : '🔇 静音';
 };
 function beep(ok) {
   if (!sndOn) return;
   try {
+    unlockAudio();
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
     const notes = ok ? [660, 880] : [220, 165];
     notes.forEach((f, i) => {
       const o = ac.createOscillator(), gn = ac.createGain();
