@@ -3,9 +3,10 @@
  * 激活码哈希生成器（本地运行，不需要联网）
  *
  * 用法：
- *   node tools/gen-codes.js 2099-12-31 YLZ-8K3D-9F2A-8C41 YLZ-4M7Q-2B6H-1N9R
+ *   node tools/gen-codes.js 2099-12-31 A7K2-9QMX B3DF-7K2M
  *   node tools/gen-codes.js 2099-12-31 --count 20
  *
+ * 随机码格式：8 位无歧义字母数字（两组 4 位，如 A7K2-9QMX）。
  * 买断/永久畅玩用日期 2099-12-31；需要限时码时再填具体到期日。
  *
  * 输出分两段：
@@ -20,14 +21,14 @@ const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const norm = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '');
 const hashOf = s => crypto.createHash('sha256').update(norm(s)).digest('hex');
 const randomCode = () => {
-  const chars = Array.from({ length: 12 }, () => ALPHABET[crypto.randomInt(ALPHABET.length)]).join('');
-  return 'YLZ-' + chars.match(/.{4}/g).join('-');
+  const chars = Array.from({ length: 8 }, () => ALPHABET[crypto.randomInt(ALPHABET.length)]).join('');
+  return chars.match(/.{4}/g).join('-');
 };
 
 const [, , exp, ...args] = process.argv;
 const usage = [
   '用法:',
-  '  node tools/gen-codes.js 2099-12-31 YLZ-XXXX-XXXX-XXXX [更多码...]',
+  '  node tools/gen-codes.js 2099-12-31 XXXX-XXXX [更多码...]',
   '  node tools/gen-codes.js 2099-12-31 --count 20'
 ].join('\n');
 if (!exp || !/^\d{4}-\d{2}-\d{2}$/.test(exp) || !args.length || !isFinite(Date.parse(exp + 'T23:59:59'))) {
