@@ -1,0 +1,4 @@
+# 明文激活码 / 私密资料，禁止提交
+activation-codes*.txt
+*激活码*.txt
+private/

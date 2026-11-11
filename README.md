@@ -4,9 +4,9 @@ H5 / PC 双端拼音练习游戏。
 
 ## 在线地址
 
-- H5：https://imkennypanda.github.io/yulingzhi-minigame/h5.html
-- PC：https://imkennypanda.github.io/yulingzhi-minigame/pc.html
-- 付费弹窗预览：https://imkennypanda.github.io/yulingzhi-minigame/h5.html?paywall=demo
+- H5：<https://imkennypanda.github.io/yulingzhi-minigame/h5.html>
+- PC：<https://imkennypanda.github.io/yulingzhi-minigame/pc.html>
+- 付费弹窗预览：<https://imkennypanda.github.io/yulingzhi-minigame/h5.html?paywall=demo>
 
 ## 付费与激活流程
 
@@ -21,7 +21,7 @@ H5 / PC 双端拼音练习游戏。
 
 - 页面只保存 `SHA-256(激活码)` 和到期日，不保存明文。
 - 输入时忽略大小写、空格和横杠：`ylz-8k3d...` 和 `YLZ8K3D...` 等价。
-- 当前内置 **3 个演示码**，到期日 `2099-12-31`。完整明文请私下保存，不要写进仓库。
+- 当前内置 **500 个正式码 + 3 个演示码**，到期日 `2099-12-31`。明文清单只保存在本地私密 TXT，不要写进仓库。
 - 激活码可以被转发，前端只能做软校验；高价值场景需要后端。
 
 ## 新增激活码
@@ -65,7 +65,7 @@ git push
 
 - 永久畅玩：`2099-12-31`
 - 限时码：填具体日期，当天 23:59:59 前有效
-- 当前线上 3 个演示码也都是 `2099-12-31`
+- 当前内置的 500 个正式码和 3 个演示码都是 `2099-12-31`
 
 ## 注意
 
