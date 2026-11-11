@@ -388,7 +388,12 @@
     color: #B99AB0; font-size: 12px; font-weight: 700; line-height: 1.7; text-align: center;
   }
   .pay-qr-box.no-img .pay-qr-ph { display: flex; }
-  .pay-hint { font-size: 12.5px; font-weight: 700; line-height: 1.6; color: #E2568F; margin-bottom: 9px; }
+  .pay-hint { font-size: 12.5px; font-weight: 700; line-height: 1.6; color: #E2568F; margin-bottom: 8px; }
+  .pay-sms {
+    margin: 0 0 10px; padding: 8px 10px; border-radius: 11px;
+    background: #FFF5FA; border: 1.5px dashed #FFC7E1;
+    font-size: 12px; font-weight: 800; line-height: 1.55; color: #B03E70;
+  }
   .pay-order {
     display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
     font-size: 12px; color: #8A7A9C; margin-bottom: 10px;
@@ -550,12 +555,13 @@
       <img class="pay-qr" id="payQr" alt="微信收款码">
       <div class="pay-qr-ph" id="payQrPh">收款码加载中…</div>
     </div>
-    <div class="pay-hint" id="payHint">长按上方二维码 → 识别图中二维码 → 支付 9.9 元</div>
+    <div class="pay-hint" id="payHint">长按上方二维码 → 识别图中二维码 → 付款并备注手机号</div>
+    <div class="pay-sms">扫码付款请备注手机号，该手机号会收到激活码短信</div>
     <div class="pay-order">订单号 <b id="payOrder">—</b><button type="button" class="pay-mini" id="payCopyOrder">复制</button></div>
-    <button type="button" class="pay-btn" id="payPaid">我已付款，查看领码方式</button>
+    <button type="button" class="pay-btn" id="payPaid">我已付款，查看收码说明</button>
     <div class="pay-contact" id="payContact" hidden>
-      <div>付款后加客服微信 <b id="payWxId">—</b>，发送 <b>订单号 + 微信交易单号</b>，核对后发激活码。</div>
-      <button type="button" class="pay-mini" id="payCopyWx">复制微信号</button>
+      <div>激活码会发送到你付款时备注的手机号。若未收到，请加客服微信 <b id="payWxId">—</b>，发送付款手机号查询。</div>
+      <button type="button" class="pay-mini" id="payCopyWx">复制客服微信</button>
     </div>
     <div class="pay-line"><span>已有激活码</span></div>
     <div class="pay-code-row">
@@ -2239,7 +2245,7 @@ const PAY_CFG = {
   days: 3,                       // 试用天数：从首次打开起算 3 天
   price: '9.9',
   qrSrc: 'img/wechat-pay.png',   // 微信个人收款码（静态码图片）
-  wxId: 'YOUR_WECHAT_ID',        // TODO: 换成你的客服微信号
+  wxId: '18273110229',           // 客服微信
   // 激活码只存 SHA-256 哈希，不存明文。
   // 生成：node tools/gen-codes.js 2027-11-11 YLZ-XXXX-XXXX-XXXX
   codes: {
@@ -2425,9 +2431,9 @@ function shouldPay() {
 }
 function payHintText() {
   const ua = navigator.userAgent;
-  if (/MicroMessenger/i.test(ua)) return '长按上方二维码 → 识别图中二维码 → 输入 ' + PAY_CFG.price + ' 元付款';
-  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return '长按保存二维码 → 打开微信 → 扫一扫 → 右上角相册 → 选择这张图';
-  return '打开手机微信，扫一扫屏幕上的二维码付款';
+  if (/MicroMessenger/i.test(ua)) return '长按上方二维码 → 识别图中二维码 → 付款并备注手机号';
+  if (/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return '长按保存二维码 → 打开微信 → 扫一扫 → 相册选图 → 付款并备注手机号';
+  return '打开手机微信，扫一扫屏幕上的二维码 → 付款并备注手机号';
 }
 function showPay() {
   if (payOpen) return;
