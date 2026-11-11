@@ -1100,6 +1100,11 @@ function pickVoice() {
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 let ac = null;                         // Web Audio 提示音；长时间无操作后需要 resume
 const audioCache = new Map();          // 缓存每个音频的播放器，避免每次点击都重新加载
+/* 页面加载时就把音频上下文建好（挂起态），第一次点击不必再等音频设备初始化 */
+try {
+  const AC0 = window.AudioContext || window.webkitAudioContext;
+  if (AC0) ac = new AC0();
+} catch (e) {}
 function unlockAudio() {
   try {
     if ('speechSynthesis' in window && speechSynthesis.paused) speechSynthesis.resume();
@@ -2135,20 +2140,26 @@ document.getElementById('btnSound').onclick = e => {
 function beep(ok) {
   if (!sndOn) return;
   try {
-    unlockAudio();
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === 'suspended') ac.resume();
-    const notes = ok ? [660, 880] : [220, 165];
-    notes.forEach((f, i) => {
-      const o = ac.createOscillator(), gn = ac.createGain();
-      o.type = ok ? 'triangle' : 'sawtooth';
-      o.frequency.value = f;
-      gn.gain.setValueAtTime(0.0001, ac.currentTime + i * 0.12);
-      gn.gain.exponentialRampToValueAtTime(0.18, ac.currentTime + i * 0.12 + 0.02);
-      gn.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + i * 0.12 + 0.16);
-      o.connect(gn).connect(ac.destination);
-      o.start(ac.currentTime + i * 0.12); o.stop(ac.currentTime + i * 0.12 + 0.2);
-    });
+    const play = () => {
+      const t0 = ac.currentTime;
+      const notes = ok ? [660, 880] : [220, 165];
+      notes.forEach((f, i) => {
+        const o = ac.createOscillator(), gn = ac.createGain();
+        o.type = ok ? 'triangle' : 'sawtooth';
+        o.frequency.value = f;
+        gn.gain.setValueAtTime(0.0001, t0 + i * 0.12);
+        gn.gain.exponentialRampToValueAtTime(0.18, t0 + i * 0.12 + 0.02);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.12 + 0.16);
+        o.connect(gn).connect(ac.destination);
+        o.start(t0 + i * 0.12); o.stop(t0 + i * 0.12 + 0.2);
+      });
+    };
+    // 长时间无操作后上下文是挂起态，等恢复完成再响，避免提示音被吞掉
+    if (ac.state === 'suspended') {
+      const p = ac.resume();
+      if (p && p.then) p.then(play, () => {});
+    } else play();
   } catch (e) {}
 }
 
