@@ -2239,7 +2239,7 @@ syncStations();
 const PAY_CFG = {
   days: 3,                       // 试用天数：从首次打开起算 3 天
   price: '9.9',
-  qrSrc: 'img/wechat-pay.png',   // 微信个人收款码（静态码图片）
+  qrSrc: 'img/wechat-pay-julie2.png',   // 微信个人收款码（静态码图片）
   wxId: 'julie686817',           // 客服微信
   // 激活码只存 SHA-256 哈希，不存明文。
   // 生成：node tools/gen-codes.js 2099-12-31 XXXX-XXXX
@@ -2986,7 +2986,7 @@ function bootTrial() {
   qr.onload = () => box.classList.remove('no-img');
   qr.onerror = () => {
     box.classList.add('no-img');
-    pay$('payQrPh').innerHTML = '收款码未找到<br><small>请把图片放到 img/wechat-pay.png</small>';
+    pay$('payQrPh').innerHTML = '收款码未找到<br><small>请把图片放到 img/wechat-pay-julie2.png</small>';
   };
   qr.src = PAY_CFG.qrSrc;
   pay$('payCopyWx').onclick = () => copyText(PAY_CFG.wxId, pay$('payCopyWx'));
