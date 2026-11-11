@@ -3,10 +3,12 @@
  * 激活码哈希生成器（本地运行，不需要联网）
  *
  * 用法：
- *   node tools/gen-codes.js 2027-11-11 YLZ-8K3D-9F2A-8C41 YLZ-4M7Q-2B6H-1N9R
+ *   node tools/gen-codes.js 2099-12-31 YLZ-8K3D-9F2A-8C41 YLZ-4M7Q-2B6H-1N9R
+ *
+ * 买断/永久畅玩用日期 2099-12-31；需要限时码时再填具体到期日。
  *
  * 输出每一行形如：
- *   '69dc84f5...': '2027-11-11',   // YLZ-8K3D-9F2A-8C41
+ *   '69dc84f5...': '2099-12-31',   // YLZ-8K3D-9F2A-8C41
  * 把这些行粘到 h5.html / pc.html 里 PAY_CFG.codes 中即可。
  *
  * 明文激活码只保存在你自己的私有表格里；页面里只有哈希，
@@ -16,7 +18,7 @@ const crypto = require('crypto');
 
 const [, , exp, ...codes] = process.argv;
 if (!exp || !/^\d{4}-\d{2}-\d{2}$/.test(exp) || !codes.length) {
-  console.error('用法: node tools/gen-codes.js 2027-11-11 YLZ-XXXX-XXXX-XXXX [更多码...]');
+  console.error('用法: node tools/gen-codes.js 2099-12-31 YLZ-XXXX-XXXX-XXXX [更多码...]');
   process.exit(1);
 }
 

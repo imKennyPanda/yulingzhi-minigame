@@ -543,7 +543,7 @@
   <div class="pay-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
     <div class="pay-badge">🔒</div>
     <div class="pay-title" id="payTitle">3 天试用已结束</div>
-    <div class="pay-sub">扫码支付 <b>9.9 元</b>，解锁一年完整练习</div>
+    <div class="pay-sub">扫码支付 <b>9.9 元</b>，永久畅玩</div>
     <div class="pay-qr-box no-img" id="payQrBox">
       <img class="pay-qr" id="payQr" alt="微信收款码">
       <div class="pay-qr-ph" id="payQrPh">收款码加载中…</div>
@@ -564,7 +564,7 @@
       <button type="button" class="pay-btn pay-btn-sm" id="payActivate">激活</button>
     </div>
     <div class="pay-msg" id="payMsg"></div>
-    <div class="pay-foot">激活码有效期一年 · 仅限本人使用</div>
+    <div class="pay-foot">激活码永久有效 · 仅限本人使用</div>
     <div class="pay-preview" id="payPreview" hidden>预览模式 · <button type="button" id="payPreviewClose">关闭预览</button></div>
   </div>
 </div>
@@ -2242,11 +2242,11 @@ const PAY_CFG = {
   qrSrc: 'img/wechat-pay.png',   // 微信个人收款码（静态码图片）
   wxId: '18273110229',           // 客服微信
   // 激活码只存 SHA-256 哈希，不存明文。
-  // 生成：node tools/gen-codes.js 2027-11-11 YLZ-XXXX-XXXX-XXXX
+  // 生成：node tools/gen-codes.js 2099-12-31 YLZ-XXXX-XXXX-XXXX
   codes: {
-    '69dc84f5457380ed993e0f94dc716e8aaad9ac0e00363200f5f76743d7e69d85': '2027-11-11',
-    '3c9715e0effb37565ad2cd05248e513deede75954544cc308919854cbc51b19a': '2027-11-11',
-    '61320e35b4a1f0bdb1e53c157bc8c562380f507847e507c04af8f938085ac3ff': '2027-11-11'
+    '69dc84f5457380ed993e0f94dc716e8aaad9ac0e00363200f5f76743d7e69d85': '2099-12-31',
+    '3c9715e0effb37565ad2cd05248e513deede75954544cc308919854cbc51b19a': '2099-12-31',
+    '61320e35b4a1f0bdb1e53c157bc8c562380f507847e507c04af8f938085ac3ff': '2099-12-31'
   }
 };
 const TRIAL_MS = PAY_CFG.days * 24 * 60 * 60 * 1000;
