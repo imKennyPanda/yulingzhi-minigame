@@ -2271,6 +2271,8 @@ function resetAll() {
     g.scEl.innerHTML = `0<small>/10</small>`; g.runEl.style.left = START + 'px';
     resetGroup(g);
   });
+  preloadQueue.length = 0;                 // 旧题的预加载作废，按当前 4 组重新排队
+  GROUPS.forEach(g => { if (g.q) preloadQuestionAudio(g.q); });
   if (MODE === 'challenge') startTimer(CHALLENGE_SEC); else stopTimer();
 }
 
