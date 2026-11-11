@@ -1271,17 +1271,48 @@ function audioFor(src) {
   if (!a) {
     a = new Audio();
     a.preload = 'auto';
-    a.src = src;
     audioCache.set(src, a);
     trimAudioCache();
   }
+  if (a.getAttribute('src') !== src) {
+    const qi = preloadQueue.indexOf(src);   // 点击优先：把它从预加载队列里拽出来
+    if (qi >= 0) preloadQueue.splice(qi, 1);
+    a.preload = 'auto';
+    a.src = src;
+  }
   return a;
+}
+/* 预加载排队进行（同时最多 3 个），一次性拉上百个文件会拖慢第一次点击 */
+const preloadQueue = [];
+let preloadActive = 0;
+const PRELOAD_MAX = 3;
+function pumpPreload() {
+  while (preloadActive < PRELOAD_MAX && preloadQueue.length) {
+    const src = preloadQueue.shift();
+    const a = audioCache.get(src);
+    if (!a || a.getAttribute('src')) continue;
+    preloadActive++;
+    let done = false;
+    const fin = () => { if (done) return; done = true; preloadActive--; pumpPreload(); };
+    a.addEventListener('canplaythrough', fin, { once: true });
+    a.addEventListener('error', fin, { once: true });
+    try { a.src = src; a.preload = 'auto'; a.load(); } catch (e) { fin(); }
+    setTimeout(fin, 4000);                  // 兜底：个别文件卡住也不堵队列
+  }
 }
 function preloadAudio(src) {
   if (!src) return;
   try {
-    const a = audioFor(src);
-    if (a.readyState === 0) a.load();
+    let a = audioCache.get(src);
+    if (!a) {
+      a = new Audio();
+      a.preload = 'none';
+      audioCache.set(src, a);
+      trimAudioCache();
+    }
+    if (a.getAttribute('src') || preloadQueue.includes(src)) return;
+    preloadQueue.push(src);
+    pumpPreload();
   } catch (e) {}
 }
 function pinyinAudioSrc(kind, key) {
