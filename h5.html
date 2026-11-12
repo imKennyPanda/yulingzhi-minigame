@@ -40,7 +40,7 @@
     font-size: 13.5px; font-weight: 800; color: #5B4B6E; border: 2px solid transparent; cursor: pointer; user-select: none;
   }
   .tab.on { background: #fff; border-color: #FF85BD; color: #FF6FAE; box-shadow: 0 3px 8px rgba(255,138,61,.22); }
-  .subtabs { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: #8A7A9C; font-weight: 700; }
+  .subtabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: #8A7A9C; font-weight: 700; }
   .subtabs span { padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.7); cursor: pointer; user-select: none; }
   .subtabs span.on { background: #63C7F5; color: #fff; }
   .banner { margin-top: 9px; text-align: center; font-size: 13.5px; font-weight: 800; color: #FF6FAE; }
@@ -450,6 +450,8 @@
     范围
     <span data-max="5">5以内</span>
     <span data-max="10" class="on">10以内</span>
+    <span data-max="15">15以内</span>
+    <span data-max="20">20以内</span>
   </div>
 
   <div class="tabs" id="tabs">
