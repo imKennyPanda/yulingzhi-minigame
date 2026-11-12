@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.cloudbase.net/cli/cloudbaserc.schema.json",
+  "envId": "yulingzhi-prime-d3fjr5nn208b4464",
+  "functionRoot": "cloudfunctions",
+  "functions": [
+    {
+      "name": "ylz-api",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 10,
+      "memorySize": 256,
+      "description": "玉灵之音：激活码校验、一码一设备绑定、服务端试用期判定（HTTP 访问）"
+    },
+    {
+      "name": "ylz-admin",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 60,
+      "memorySize": 256,
+      "description": "玉灵之音：激活码管理（生成/导入/查询/作废/解绑），仅通过 CloudBase CLI 调用"
+    }
+  ]
+}
