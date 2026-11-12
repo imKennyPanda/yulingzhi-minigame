@@ -128,6 +128,9 @@
       if (it.deviceId && it.status === 'used') {
         ops += '<button type="button" class="btn mini ghost" data-act="unbind" data-id="' + A.esc(it.id) + '">解绑</button>';
       }
+      if (it.status !== 'used') {
+        ops += '<button type="button" class="btn mini danger" data-act="del" data-id="' + A.esc(it.id) + '">删除</button>';
+      }
       return '<tr>' +
         '<td class="mono"><b>' + A.esc(it.code) + '</b></td>' +
         '<td><span class="pill ' + st.cls + '">' + st.text + '</span></td>' +
@@ -275,6 +278,14 @@
       if (!confirm('确定解绑 ' + id + '？原设备会立即失效，用户可在新设备重新激活。')) return;
       A.call('unbind', { code: id }).then(function (r) {
         A.toast(r.ok ? '已解绑' : (r.msg || '操作失败'), !r.ok);
+        if (r.ok) loadCodes();
+      }).catch(function () { A.toast('网络异常', true); });
+      return;
+    }
+    if (act === 'del') {
+      if (!confirm('确定彻底删除 ' + id + '？删除后无法恢复，建议优先用「作废」。')) return;
+      A.call('del', { code: id }).then(function (r) {
+        A.toast(r.ok ? '已删除' : (r.msg || '操作失败'), !r.ok);
         if (r.ok) loadCodes();
       }).catch(function () { A.toast('网络异常', true); });
     }
