@@ -443,7 +443,7 @@
     border: 2px solid #fff; box-shadow: 0 2px 5px rgba(90,60,110,.2);
   }
 
-  /* ===== 3 天试用 · 付费解锁弹窗 ===== */
+  /* ===== 1 天试用 · 付费解锁弹窗 ===== */
   .pay-mask {
     position: fixed; inset: 0; z-index: 9999; display: none;
     align-items: center; justify-content: center; padding: 24px; overflow: auto;
@@ -631,11 +631,11 @@
   <div class="chart-body" id="chartBody"></div>
 </div>
 
-<!-- 3 天试用到期 · 付费解锁 -->
+<!-- 1 天试用到期 · 付费解锁 -->
 <div class="pay-mask" id="payMask" aria-hidden="true">
   <div class="pay-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
     <div class="pay-badge">🔒</div>
-    <div class="pay-title" id="payTitle">3 天试用已结束</div>
+    <div class="pay-title" id="payTitle">1 天试用已结束</div>
     <div class="pay-sub">扫码支付 <b>9.9 元</b>，永久畅玩</div>
     <div class="pay-qr-box no-img" id="payQrBox">
       <img class="pay-qr" id="payQr" alt="微信收款码">
@@ -2682,13 +2682,13 @@ loadAvatars();
 GROUPS.forEach(paintAvatar);
 GROUPS.forEach(resetGroup);
 
-/* ---------------- 3 天试用 · 付费解锁 ---------------- */
+/* ---------------- 1 天试用 · 付费解锁 ---------------- */
 const PAY_CFG = {
-  days: 3,                       // 试用天数：服务端按「IP + 浏览器」记录首次访问时间
+  days: 1,                       // 试用天数：服务端按「IP + 浏览器」记录首次访问时间
   price: '9.9',
   qrSrc: 'img/wechat-pay-julie2.png',   // 微信个人收款码（静态码图片）
   wxId: 'julie686817',           // 客服微信
-  // 激活码校验由腾讯云 CloudBase 云函数完成（一码一设备、服务端试用期）。
+  // 激活码校验由腾讯云 CloudBase 云函数完成（一码最多 3 台设备，手机/平板/电脑通用）。
   // 部署后如域名不同，只需改这一处。
   apiBase: 'https://yulingzhi-prime-d3fjr5nn208b4464-1259601048.ap-shanghai.app.tcloudbase.com/ylz'
 };
@@ -2908,7 +2908,7 @@ function showPay() {
   payOpen = true;
   pay$('payWxId').textContent = PAY_CFG.wxId;
   pay$('payPreview').hidden = !demoPay;
-  pay$('payMsg').textContent = demoPay ? '预览模式：用户 3 天试用到期后会看到这个窗口。' : '';
+  pay$('payMsg').textContent = demoPay ? '预览模式：用户 1 天试用到期后会看到这个窗口。' : '';
   payMask.classList.add('show');
   payMask.setAttribute('aria-hidden', 'false');
   document.body.classList.add('pay-locked');

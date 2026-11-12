@@ -1,6 +1,6 @@
 # 玉灵之音 · CloudBase 后端说明
 
-H5 / PC 的激活码校验与 3 天试用判定已改为腾讯云 CloudBase（环境 `yulingzhi-prime`，ID `yulingzhi-prime-d3fjr5nn208b4464`）。
+H5 / PC 的激活码校验与 1 天试用判定已改为腾讯云 CloudBase（环境 `yulingzhi-prime`，ID `yulingzhi-prime-d3fjr5nn208b4464`）。
 
 ## 结构
 
@@ -28,9 +28,9 @@ admin/                           后台样式与公共脚本（登录、请求�
 
 | 集合 | `_id` | 用途 |
 |---|---|---|
-| `activation_codes` | 规范化激活码（如 `AB12CD34`） | status: unused / used / revoked、expireAt、deviceId、usedAt、note、batch |
+| `activation_codes` | 规范化激活码（如 `AB12CD34`） | status: unused / used / revoked、expireAt、devices（最多 3 台）、deviceId（首台，兼容旧数据）、usedAt、note、batch |
 | `devices` | 设备 ID | 该设备当前激活的码、到期时间 |
-| `trial_fingerprints` | sha256(IP + UA) | 首次访问时间，服务端据此计算 3 天试用，清缓存/改本地时间无效 |
+| `trial_fingerprints` | sha256(IP + UA) | 首次访问时间，服务端据此计算 1 天试用，清缓存/改本地时间无效 |
 | `visits` | 自增 | 每次打开页面一条：ts、day（+08:00）、deviceId、page(h5/pc)、ip、ua、ref，用于 PV |
 | `visitors` | 设备 ID | firstSeen / lastSeen / page / ip / ua，用于 UV 与新访客 |
 | `config` | `admin` | 管理后台口令的 sha256（不存明文） |
@@ -88,6 +88,17 @@ ADMIN_TOKEN='你的口令（至少 8 位）' node tools/cloudbase-admin.js setad
 - **数据看板**：今日 / 近 7 天 / 近 30 天 / 全部的 PV、UV、新访客；下方访问明细可按时间范围、
   H5/PC、设备 ID 筛选并分页。PV 只在上报 `visit:1` 时记录，10 分钟一次的状态刷新不会重复计数。
 
+### 一码多设备（手机 / 平板 / 电脑）
+
+- 每个激活码默认最多绑定 **3 台**设备，绑定顺序记录在 `activation_codes.devices`；
+  同一台设备重复输入是幂等的，第 4 台会提示「已绑定 3 台设备，请联系客服解绑」。
+- 设备数可通过云函数环境变量 `MAX_DEVICES_PER_CODE` 调整（1–10）；`ylz-api`、`ylz-console`、
+  `ylz-admin` 三个函数必须设成同一个值。
+- 管理后台「绑定设备」列显示 `已绑 / 上限`，点开可看每台设备的 ID、绑定时间，支持**单台解绑**或**全部解绑**。
+- 单台解绑只让该设备失效，其余设备继续可用；全部解绑后激活码恢复为 `unused`。
+- 试用与激活相互独立：未付费试用按 IP + UA 计算，不受设备数限制；激活后才受上限约束。
+- 旧数据兼容：早期只有一个 `deviceId` 的激活码会自动视为「已绑 1 台」，下次绑定时补写 `devices` 数组。
+
 ## 导入已有激活码（503 个，含 3 个演示码）
 
 明文清单在仓库外：`../private/yulingzhi-activation-codes-500-2026-11-11.txt`。
@@ -110,9 +121,10 @@ node tools/cloudbase-admin.js stats
 node tools/cloudbase-admin.js list --status used --limit 20
 node tools/cloudbase-admin.js list --code AB12-CD34
 
-# 用户换设备：先解绑，再让用户在新设备输入同一个码
+# 用户换设备：解绑全部设备（恢复未使用），或只解绑某一台
 node tools/cloudbase-admin.js unbind AB12-CD34
-# 或者直接把码绑到指定设备
+node tools/cloudbase-admin.js unbind AB12-CD34 <deviceId>
+# 或者直接把码绑到指定设备（已绑定 3 台时会拒绝）
 node tools/cloudbase-admin.js rebind AB12-CD34 <deviceId>
 
 # 作废（退款/异常）
@@ -130,7 +142,7 @@ node tools/cloudbase-admin.js delvisits <deviceId>
 ## 客户端逻辑
 
 - 首次打开：生成/读取 `deviceId`，向 `/ylz` 发送 `{action:'verify', page, visit:1, ref}`；服务端返回试用到期时间与激活状态，并记录一次访问（PV/UV）。
-- 激活：`{action:'activate', code}`；成功即把码绑定到当前 `deviceId`，同一码换设备会提示联系客服。
+- 激活：`{action:'activate', code}`；成功即把码绑定到当前 `deviceId`（同一码最多 3 台设备），超出上限会提示联系客服解绑。
 - 页面每 10 分钟、每次切回前台都会重新向服务端核对；断网时先用本地缓存显示，联网后以服务端为准。
 - 本地不再保存任何激活码哈希，源码里没有可被绕过的码表。
 
@@ -139,4 +151,4 @@ node tools/cloudbase-admin.js delvisits <deviceId>
 - 激活码明文只存在云数据库（管理端）和你的本地 TXT；仓库、GitHub Pages 中没有任何明文或哈希码表。
 - 管理后台口令只以 sha256 保存在 `config/admin`；明文不要提交到仓库、不要发到聊天里，建议只放在仓库外的 `private/`。
 - 试用按「IP + 浏览器 UA」记录。换网络/换浏览器可能重新获得试用，这是无账号体系下的取舍；如需更严，可改为微信登录后再判定。
-- 若需临时关闭云端校验，把 `PAY_CFG.apiBase` 置空即可回退为纯本地试用估算（但就没有一码一用能力了）。
+- 若需临时关闭云端校验，把 `PAY_CFG.apiBase` 置空即可回退为纯本地试用估算（但就没有一码多设备、防转发的能力了）。

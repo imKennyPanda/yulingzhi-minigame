@@ -94,13 +94,28 @@
   </section>
 </div>
 
+<div class="modal-mask" id="devMask" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="devTitle">
+    <div class="modal-head">
+      <h3 id="devTitle">绑定设备</h3>
+      <button type="button" class="modal-x" id="devClose" aria-label="关闭">✕</button>
+    </div>
+    <p class="modal-desc" id="devDesc"></p>
+    <div id="devList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="devAll">全部解绑</button>
+      <button type="button" class="btn ghost" id="devDone">关闭</button>
+    </div>
+  </div>
+</div>
+
 <script src="admin/admin-common.js"></script>
 <script>
 (function () {
   'use strict';
   var A = window.Admin;
   var $ = function (id) { return document.getElementById(id); };
-  var state = { status: '', expired: false, code: '', skip: 0, limit: 50, total: 0, count: 0 };
+  var state = { status: '', expired: false, code: '', skip: 0, limit: 50, total: 0, count: 0, maxDevices: 3, byId: {} };
   var lastGen = null;
 
   function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -118,24 +133,29 @@
       body.innerHTML = '<tr><td colspan="7" class="empty">没有符合条件的激活码</td></tr>';
       return;
     }
+    state.byId = {};
     body.innerHTML = rows.map(function (it) {
+      state.byId[it.id] = it;
       var st = statusOf(it);
       var note = [it.note, it.batch].filter(Boolean).join(' · ');
+      var devs = it.devices || [];
       var ops = '<button type="button" class="btn mini ghost" data-act="copy" data-id="' + A.esc(it.id) + '">复制</button>';
       if (it.status !== 'revoked') {
         ops += '<button type="button" class="btn mini danger" data-act="revoke" data-id="' + A.esc(it.id) + '">作废</button>';
       }
-      if (it.deviceId && it.status === 'used') {
-        ops += '<button type="button" class="btn mini ghost" data-act="unbind" data-id="' + A.esc(it.id) + '">解绑</button>';
-      }
       if (it.status !== 'used') {
         ops += '<button type="button" class="btn mini danger" data-act="del" data-id="' + A.esc(it.id) + '">删除</button>';
       }
+      var devTitle = devs.map(function (d) { return d.id; }).join('\n');
+      var devCell = devs.length
+        ? '<button type="button" class="btn mini ghost" data-act="devices" data-id="' + A.esc(it.id) + '" title="' + A.esc(devTitle) + '">' +
+            devs.length + ' / ' + (state.maxDevices || 3) + ' 台</button>'
+        : '<span class="muted">—</span>';
       return '<tr>' +
         '<td class="mono"><b>' + A.esc(it.code) + '</b></td>' +
         '<td><span class="pill ' + st.cls + '">' + st.text + '</span></td>' +
         '<td class="mono">' + A.esc(it.expireAt || '2099-12-31') + '</td>' +
-        '<td class="mono ellipsis" title="' + A.esc(it.deviceId) + '">' + (it.deviceId ? A.esc(it.deviceId) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + devCell + '</td>' +
         '<td>' + (it.usedAt ? A.fmtTime(it.usedAt) : '<span class="muted">—</span>') + '</td>' +
         '<td class="ellipsis" title="' + A.esc(note) + '">' + (note ? A.esc(note) : '<span class="muted">—</span>') + '</td>' +
         '<td class="actions">' + ops + '</td>' +
@@ -163,6 +183,7 @@
       if (!r.ok) throw new Error(r.msg || '加载失败');
       state.total = r.total || 0;
       state.count = r.count || 0;
+      state.maxDevices = r.maxDevices || 3;
       render(r.items || []);
       updatePager();
     }).catch(function (e) {
@@ -175,6 +196,34 @@
     state.skip = 0;
     if (next) Object.assign(state, next);
     loadCodes();
+  }
+
+  /* 设备管理弹窗 */
+  var devState = { code: '', label: '', devices: [], max: 3 };
+
+  function openDevices(it) {
+    if (!it) return;
+    devState = { code: it.id, label: it.code, devices: it.devices || [], max: state.maxDevices || 3 };
+    renderDevices();
+    $('devMask').hidden = false;
+  }
+  function closeDevices() { $('devMask').hidden = true; }
+  function renderDevices() {
+    var list = devState.devices;
+    $('devTitle').textContent = '绑定设备 · ' + devState.label;
+    $('devDesc').textContent = '已绑定 ' + list.length + ' / ' + devState.max +
+      ' 台（手机 H5 / 平板 / 电脑通用）。解绑后该设备立即失效，其他设备不受影响。';
+    $('devList').innerHTML = list.length
+      ? list.map(function (d) {
+          return '<div class="dev-row">' +
+            '<div class="dev-id">' + A.esc(d.id) + '</div>' +
+            '<div class="dev-at">' + (d.at ? A.fmtTime(d.at) : '') + '</div>' +
+            '<button type="button" class="btn mini danger" data-dev="' + A.esc(d.id) + '">解绑此设备</button>' +
+          '</div>';
+        }).join('')
+      : '<div class="empty">还没有绑定设备</div>';
+    $('devAll').disabled = !list.length;
+    $('devAll').textContent = list.length ? '全部解绑（' + list.length + ' 台）' : '全部解绑';
   }
 
   /* 生成 */
@@ -274,14 +323,7 @@
       }).catch(function () { A.toast('网络异常', true); });
       return;
     }
-    if (act === 'unbind') {
-      if (!confirm('确定解绑 ' + id + '？原设备会立即失效，用户可在新设备重新激活。')) return;
-      A.call('unbind', { code: id }).then(function (r) {
-        A.toast(r.ok ? '已解绑' : (r.msg || '操作失败'), !r.ok);
-        if (r.ok) loadCodes();
-      }).catch(function () { A.toast('网络异常', true); });
-      return;
-    }
+    if (act === 'devices') { openDevices(state.byId[id]); return; }
     if (act === 'del') {
       if (!confirm('确定彻底删除 ' + id + '？删除后无法恢复，建议优先用「作废」。')) return;
       A.call('del', { code: id }).then(function (r) {
@@ -289,6 +331,45 @@
         if (r.ok) loadCodes();
       }).catch(function () { A.toast('网络异常', true); });
     }
+  });
+
+  /* 设备弹窗事件 */
+  $('devClose').addEventListener('click', closeDevices);
+  $('devDone').addEventListener('click', closeDevices);
+  $('devMask').addEventListener('click', function (e) { if (e.target === this) closeDevices(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDevices(); });
+
+  $('devList').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-dev]');
+    if (!btn) return;
+    var dev = btn.dataset.dev;
+    if (!confirm('确定解绑设备 ' + dev + '？该设备会立即失效。')) return;
+    btn.disabled = true;
+    A.call('unbind', { code: devState.code, deviceId: dev }).then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '解绑失败');
+      devState.devices = devState.devices.filter(function (d) { return d.id !== dev; });
+      renderDevices();
+      loadCodes();
+      A.toast('已解绑该设备');
+    }).catch(function (err) {
+      A.toast(err.message || '解绑失败', true);
+      btn.disabled = false;
+    });
+  });
+
+  $('devAll').addEventListener('click', function () {
+    if (!devState.devices.length) return;
+    if (!confirm('确定解绑全部 ' + devState.devices.length + ' 台设备？激活码会恢复为未使用。')) return;
+    this.disabled = true;
+    A.call('unbind', { code: devState.code }).then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '解绑失败');
+      closeDevices();
+      resetAndLoad();
+      A.toast('已全部解绑');
+    }).catch(function (err) {
+      A.toast(err.message || '解绑失败', true);
+      $('devAll').disabled = false;
+    });
   });
 
   $('logoutBtn').addEventListener('click', A.logout);

@@ -12,7 +12,8 @@
  *   node tools/cloudbase-admin.js list --status used --limit 20
  *   node tools/cloudbase-admin.js list --code AB12-CD34
  *   node tools/cloudbase-admin.js revoke AB12-CD34
- *   node tools/cloudbase-admin.js unbind AB12-CD34          # 用户换设备：解绑后可用新设备重新激活
+ *   node tools/cloudbase-admin.js unbind AB12-CD34          # 解绑全部设备（恢复为未使用）
+ *   node tools/cloudbase-admin.js unbind AB12-CD34 <deviceId>  # 只解绑某一台设备
  *   node tools/cloudbase-admin.js rebind AB12-CD34 <deviceId>
  *   ADMIN_TOKEN=你的口令 node tools/cloudbase-admin.js setadmin   # 设置网页后台管理口令
  *   node tools/cloudbase-admin.js delvisits <deviceId>             # 删除某设备的访问记录（清理测试数据）
@@ -167,7 +168,9 @@ function print(obj) { console.log(JSON.stringify(obj, null, 2)); }
   if (action === 'revoke' || action === 'unbind') {
     const code = args._[1];
     if (!code) { console.error('请提供激活码'); process.exit(1); }
-    print(invoke({ action, code }));
+    const params = { action, code };
+    if (action === 'unbind' && args._[2]) params.deviceId = args._[2];
+    print(invoke(params));
     return;
   }
 

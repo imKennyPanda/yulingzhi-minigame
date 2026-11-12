@@ -24,6 +24,8 @@ const app = cloudbase.init({ env: cloudbase.SYMBOL_CURRENT_ENV || ENV_ID });
 const db = app.database();
 
 const DEFAULT_EXPIRE = '2099-12-31';
+/* 一个激活码最多绑定的设备数（手机 H5 / 平板 / 电脑），与 ylz-api 保持一致 */
+const MAX_DEVICES = Math.min(Math.max(Number(process.env.MAX_DEVICES_PER_CODE) || 3, 1), 10);
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints', 'visits', 'visitors', 'config'];
 
@@ -58,6 +60,24 @@ async function getDoc(col, id) {
   try { return firstData(await db.collection(col).doc(id).get()); }
   catch (e) { return null; }
 }
+
+/* 兼容旧数据：devices 数组 + 单个 deviceId 字段 */
+function boundDevices(doc) {
+  const out = [];
+  const seen = new Set();
+  const add = v => {
+    const id = typeof v === 'string' ? v : (v && (v.id || v.deviceId));
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    out.push(typeof v === 'string'
+      ? { id, at: null, ip: '', ua: '' }
+      : { id, at: v.at || null, ip: v.ip || '', ua: v.ua || '' });
+  };
+  if (doc && Array.isArray(doc.devices)) doc.devices.forEach(add);
+  if (doc && doc.deviceId) add(doc.deviceId);
+  return out;
+}
+const deviceIdsOf = doc => boundDevices(doc).map(x => x.id);
 
 /* ---------------- actions ---------------- */
 async function genCodes(p) {
@@ -125,10 +145,10 @@ async function listCodes(p) {
   if (Object.keys(where).length) q = q.where(where);
   const r = await q.orderBy('createdAt', 'desc').limit(limit).get();
   return {
-    ok: true, count: (r.data || []).length,
+    ok: true, count: (r.data || []).length, maxDevices: MAX_DEVICES,
     items: (r.data || []).map(d => ({
       code: d.code || d._id, status: d.status, expireAt: d.expireAt,
-      deviceId: d.deviceId || '', usedAt: d.usedAt || null,
+      deviceId: d.deviceId || '', devices: boundDevices(d), usedAt: d.usedAt || null,
       note: d.note || '', batch: d.batch || ''
     }))
   };
@@ -148,15 +168,30 @@ async function unbindCode(p) {
   if (n.length < 6) return { ok: false, msg: '缺少 code' };
   const doc = await getDoc('activation_codes', n);
   if (!doc) return { ok: false, msg: '激活码不存在' };
-  const oldDevice = doc.deviceId || '';
-  await db.collection('activation_codes').doc(n).update({
-    status: 'unused', deviceId: null, usedAt: null, unboundAt: Date.now()
-  });
-  // 原设备立即失效，避免解绑后新旧设备同时可用
-  if (oldDevice) {
-    try { await db.collection('devices').doc(oldDevice).update({ activated: false, code: null, unboundAt: Date.now() }); } catch (e) {}
+  const bound = boundDevices(doc);
+  const target = normDevice(p.deviceId);
+
+  // 只解绑指定设备，其余设备继续可用
+  if (target) {
+    if (!bound.some(x => x.id === target)) return { ok: false, msg: '该设备未绑定此激活码' };
+    const devices = bound.filter(x => x.id !== target);
+    const patch = { devices, unboundAt: Date.now() };
+    if (devices.length) patch.deviceId = devices[0].id;
+    else { patch.status = 'unused'; patch.deviceId = null; patch.usedAt = null; }
+    await db.collection('activation_codes').doc(n).update(patch);
+    try { await db.collection('devices').doc(target).update({ activated: false, code: null, unboundAt: Date.now() }); } catch (e) {}
+    return { ok: true, code: formatCode(n), removed: target, remaining: devices.length, status: devices.length ? 'used' : 'unused' };
   }
-  return { ok: true, code: formatCode(n), status: 'unused' };
+
+  // 不指定设备：解绑全部
+  const ids = bound.map(x => x.id);
+  await db.collection('activation_codes').doc(n).update({
+    status: 'unused', deviceId: null, devices: [], usedAt: null, unboundAt: Date.now()
+  });
+  for (const id of ids) {
+    try { await db.collection('devices').doc(id).update({ activated: false, code: null, unboundAt: Date.now() }); } catch (e) {}
+  }
+  return { ok: true, code: formatCode(n), removed: ids, status: 'unused' };
 }
 
 async function rebindCode(p) {
@@ -167,18 +202,22 @@ async function rebindCode(p) {
   const doc = await getDoc('activation_codes', n);
   if (!doc) return { ok: false, msg: '激活码不存在' };
   if (doc.status === 'revoked') return { ok: false, msg: '激活码已作废' };
-  const oldDevice = doc.deviceId || '';
-  await db.collection('activation_codes').doc(n).update({ status: 'used', deviceId, usedAt: Date.now() });
-  if (oldDevice && oldDevice !== deviceId) {
-    try { await db.collection('devices').doc(oldDevice).update({ activated: false, code: null, movedAt: Date.now() }); } catch (e) {}
+  const bound = boundDevices(doc);
+  let devices = bound;
+  if (!bound.some(x => x.id === deviceId)) {
+    if (bound.length >= MAX_DEVICES) return { ok: false, msg: '该码已绑定 ' + MAX_DEVICES + ' 台设备，请先解绑一台' };
+    devices = bound.concat([{ id: deviceId, at: Date.now(), ip: '', ua: '' }]);
   }
+  await db.collection('activation_codes').doc(n).update({
+    status: 'used', devices, deviceId: doc.deviceId || deviceId, usedAt: doc.usedAt || Date.now()
+  });
   try {
     await db.collection('devices').doc(deviceId).set({
       activated: true, code: n, expireAt: doc.expireAt || DEFAULT_EXPIRE,
       activatedAt: Date.now(), lastSeen: Date.now()
     });
   } catch (e) {}
-  return { ok: true, code: formatCode(n), deviceId };
+  return { ok: true, code: formatCode(n), deviceId, devices: devices.map(x => x.id) };
 }
 
 /* 设置网页控制台的管理口令（只保存 sha256，明文不落库、不进仓库） */
@@ -195,7 +234,11 @@ async function delCode(p) {
   const n = normCode(id);
   if (!n) return { ok: false, msg: '缺少 code' };
   try {
+    const doc = await getDoc('activation_codes', n);
     await db.collection('activation_codes').doc(n).remove();
+    for (const dev of deviceIdsOf(doc)) {
+      try { await db.collection('devices').doc(dev).update({ activated: false, code: null }); } catch (e) {}
+    }
     return { ok: true, deleted: n };
   } catch (e) {
     return { ok: false, msg: '删除失败：' + (e.message || e) };

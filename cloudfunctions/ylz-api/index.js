@@ -22,8 +22,10 @@ const ENV_ID = process.env.TCB_ENV || 'yulingzhi-prime-d3fjr5nn208b4464';
 const app = cloudbase.init({ env: cloudbase.SYMBOL_CURRENT_ENV || ENV_ID });
 const db = app.database();
 
-const TRIAL_DAYS = 3;
+const TRIAL_DAYS = 1;
 const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+/* 一个激活码最多可绑定的设备数：手机 H5 + 平板 + 电脑，默认 3 台 */
+const MAX_DEVICES = Math.min(Math.max(Number(process.env.MAX_DEVICES_PER_CODE) || 3, 1), 10);
 const DEFAULT_EXPIRE = '2099-12-31';
 const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints', 'visits', 'visitors'];
 
@@ -55,7 +57,7 @@ const isExpired = (dateStr, at) => {
 const MSG = {
   INVALID: '激活码无效，请检查后重试',
   EXPIRED: '这个激活码已过期',
-  USED_OTHER: '这个激活码已在其他设备使用，如需换设备请联系客服',
+  USED_OTHER: '这个激活码已达到设备上限，如需更换设备请联系客服解绑',
   REVOKED: '这个激活码已被停用，请联系客服',
   BAD_DEVICE: '设备标识异常，请刷新页面重试',
   SERVER_ERROR: '服务暂时不可用，请稍后重试'
@@ -113,6 +115,31 @@ async function setDoc(col, id, data) {
   return db.collection(col).doc(id).set(data);
 }
 
+/* 兼容旧数据：devices 数组 + 单个 deviceId 字段，统一成 [{id, at, ip, ua}] */
+function boundDevices(doc) {
+  const out = [];
+  const seen = new Set();
+  const add = v => {
+    const id = typeof v === 'string' ? v : (v && (v.id || v.deviceId));
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    out.push(typeof v === 'string'
+      ? { id, at: null, ip: '', ua: '' }
+      : { id, at: v.at || null, ip: v.ip || '', ua: v.ua || '' });
+  };
+  if (doc && Array.isArray(doc.devices)) doc.devices.forEach(add);
+  if (doc && doc.deviceId) add(doc.deviceId);
+  return out;
+}
+const deviceIdsOf = doc => boundDevices(doc).map(x => x.id);
+function newDeviceEntry(deviceId, ctx, at) {
+  return {
+    id: deviceId, at: at || Date.now(),
+    ip: ((ctx && ctx.ip) || '').slice(0, 64),
+    ua: ((ctx && ctx.ua) || '').slice(0, 200)
+  };
+}
+
 /* 试用指纹：同 IP + 同 UA 视为同一台“环境”，首次访问时间由服务端记录 */
 async function touchTrial(ctx) {
   const fp = sha256('ylz-trial|' + (ctx.ip || '0.0.0.0') + '|' + (ctx.ua || ''));
@@ -153,33 +180,63 @@ async function recordVisit(body, ctx) {
   }
 }
 
-/* 激活码认领：unused -> used 并绑定设备；同设备重复激活幂等 */
-async function claimCode(code, deviceId) {
+/*
+ * 激活码认领：unused -> used 并绑定设备；同设备重复激活幂等。
+ * 一个码最多绑定 MAX_DEVICES 台设备（手机 H5 / 平板 / 电脑），
+ * 已绑列表存 activation_codes.devices；deviceId 保留为首台设备以兼容旧数据。
+ */
+async function claimCode(code, deviceId, ctx) {
   const col = db.collection('activation_codes');
-  const ref = col.doc(code);
   const doc = await getDoc('activation_codes', code);
   if (!doc) return { error: 'INVALID' };
   if (doc.status === 'revoked') return { error: 'REVOKED' };
   const expireAt = doc.expireAt || DEFAULT_EXPIRE;
   if (isExpired(expireAt)) return { error: 'EXPIRED', expireAt };
+
+  const bound = boundDevices(doc);
+  const ids = bound.map(x => x.id);
+  if (ids.includes(deviceId)) return { ok: true, expireAt, devices: ids };
+
   if (doc.status === 'used') {
-    if (doc.deviceId && doc.deviceId !== deviceId) return { error: 'USED_OTHER' };
-    return { ok: true, expireAt };
+    if (ids.length >= MAX_DEVICES) return { error: 'USED_OTHER', limit: MAX_DEVICES };
+    const devices = bound.concat([newDeviceEntry(deviceId, ctx)]);
+    try {
+      await col.doc(code).update({ devices, deviceId: doc.deviceId || deviceId });
+    } catch (e) {
+      return { error: 'SERVER_ERROR' };
+    }
+    return { ok: true, expireAt, devices: devices.map(x => x.id) };
   }
+
+  const first = newDeviceEntry(deviceId, ctx);
   let r = null;
   try {
-    r = await col.where({ _id: code, status: 'unused' }).update({ status: 'used', deviceId, usedAt: Date.now() });
+    r = await col.where({ _id: code, status: 'unused' }).update({
+      status: 'used', deviceId, devices: [first], usedAt: first.at
+    });
   } catch (e) {
     r = null;
   }
-  if (!r || !r.updated) {
-    const latest = await getDoc('activation_codes', code);
-    if (!latest) return { error: 'INVALID' };
-    if (latest.status === 'unused') return { error: 'SERVER_ERROR' };
-    if (latest.status === 'revoked') return { error: 'REVOKED' };
-    if (latest.deviceId && latest.deviceId !== deviceId) return { error: 'USED_OTHER' };
+  if (r && r.updated) return { ok: true, expireAt, devices: [deviceId] };
+
+  // 并发：被另一台设备抢先占用，按最新状态再判断一次
+  const latest = await getDoc('activation_codes', code);
+  if (!latest) return { error: 'INVALID' };
+  if (latest.status === 'revoked') return { error: 'REVOKED' };
+  const latestExpire = latest.expireAt || DEFAULT_EXPIRE;
+  if (isExpired(latestExpire)) return { error: 'EXPIRED', expireAt: latestExpire };
+  if (latest.status === 'unused') return { error: 'SERVER_ERROR' };
+  const lb = boundDevices(latest);
+  const lids = lb.map(x => x.id);
+  if (lids.includes(deviceId)) return { ok: true, expireAt: latestExpire, devices: lids };
+  if (lids.length >= MAX_DEVICES) return { error: 'USED_OTHER', limit: MAX_DEVICES };
+  const devices = lb.concat([newDeviceEntry(deviceId, ctx)]);
+  try {
+    await col.doc(code).update({ devices, deviceId: latest.deviceId || deviceId });
+  } catch (e) {
+    return { error: 'SERVER_ERROR' };
   }
-  return { ok: true, expireAt };
+  return { ok: true, expireAt: latestExpire, devices: devices.map(x => x.id) };
 }
 
 async function bindDevice(deviceId, code, expireAt, ctx) {
@@ -202,10 +259,18 @@ async function onActivate(body, ctx) {
   if (!deviceId) return fail('BAD_DEVICE');
   const code = normCode(body.code);
   if (code.length < 6) return fail('INVALID', '请输入激活码');
-  const res = await claimCode(code, deviceId);
-  if (!res.ok) return fail(res.error);
+  const res = await claimCode(code, deviceId, ctx);
+  if (!res.ok) {
+    const msg = res.error === 'USED_OTHER'
+      ? '这个激活码已绑定 ' + (res.limit || MAX_DEVICES) + ' 台设备，如需更换设备请联系客服解绑'
+      : undefined;
+    return fail(res.error, msg);
+  }
   await bindDevice(deviceId, code, res.expireAt, ctx);
-  return { ok: true, activated: true, expireAt: res.expireAt, serverNow: Date.now() };
+  return {
+    ok: true, activated: true, expireAt: res.expireAt,
+    devices: res.devices || [deviceId], maxDevices: MAX_DEVICES, serverNow: Date.now()
+  };
 }
 
 async function onVerify(body, ctx) {
@@ -218,7 +283,7 @@ async function onVerify(body, ctx) {
   // 老用户迁移 / 本地已保存激活码：自动认领一次（幂等，不影响他人已绑定的码）
   const code = normCode(body.code);
   if (code.length >= 6) {
-    const res = await claimCode(code, deviceId);
+    const res = await claimCode(code, deviceId, ctx);
     if (res.ok) await bindDevice(deviceId, code, res.expireAt, ctx);
   }
 
@@ -230,7 +295,7 @@ async function onVerify(body, ctx) {
       status = 'unknown';
     } else if (c.status === 'revoked') {
       status = 'revoked';
-    } else if (c.deviceId && c.deviceId !== deviceId) {
+    } else if (deviceIdsOf(c).length && !deviceIdsOf(c).includes(deviceId)) {
       status = 'moved';
     } else {
       expireAt = c.expireAt || dev.expireAt || DEFAULT_EXPIRE;
