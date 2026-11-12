@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>激活码管理 · 玉灵之音</title>
+<link rel="stylesheet" href="admin/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">玉灵之音 · 管理后台<small>ACTIVATION CODES</small></div>
+    <nav class="nav">
+      <a class="on" href="admin.html">激活码管理</a>
+      <a href="dashboard.html">数据看板</a>
+    </nav>
+    <button type="button" class="logout" id="logoutBtn">退出</button>
+  </header>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>生成激活码</h2>
+      <p>明文只在生成后显示这一次，请及时保存到本地</p>
+    </div>
+    <form class="form-grid" id="genForm">
+      <label class="field"><span>数量</span>
+        <input class="input" id="genCount" type="number" min="1" max="200" step="1" value="10">
+      </label>
+      <label class="field"><span>有效期至</span>
+        <input class="input" id="genExpire" type="date" value="2099-12-31">
+      </label>
+      <label class="field"><span>备注（可选）</span>
+        <input class="input" id="genNote" maxlength="100" placeholder="例如：第三批 · 抖音">
+      </label>
+      <label class="field"><span>批次（可选）</span>
+        <input class="input" id="genBatch" maxlength="40" placeholder="留空自动生成">
+      </label>
+      <div class="form-actions" style="grid-column:1/-1">
+        <button class="btn primary" type="submit" id="genBtn">生成</button>
+        <span class="muted" id="genHint">单次最多 200 个</span>
+      </div>
+    </form>
+    <div class="gen-result" id="genResult" hidden>
+      <h3 id="genTitle">本次生成</h3>
+      <textarea id="genOut" readonly spellcheck="false"></textarea>
+      <div class="form-actions">
+        <button class="btn ghost" type="button" id="genCopy">复制全部</button>
+        <button class="btn ghost" type="button" id="genDownload">下载 TXT</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>激活码列表</h2>
+      <p id="codeSummary">共 0 条</p>
+    </div>
+    <div class="toolbar">
+      <div class="chips" id="codeChips">
+        <button type="button" class="chip on" data-status="">全部</button>
+        <button type="button" class="chip" data-status="unused">未使用</button>
+        <button type="button" class="chip" data-status="used">已使用</button>
+        <button type="button" class="chip" data-status="revoked">已作废</button>
+        <button type="button" class="chip" data-expired="1">已过期</button>
+      </div>
+      <div class="grow"></div>
+      <input class="input" id="codeSearch" placeholder="输入完整激活码查询" autocomplete="off">
+      <button type="button" class="btn ghost" id="codeSearchBtn">查询</button>
+      <select class="select" id="codeLimit" aria-label="每页条数">
+        <option value="50">50 条/页</option>
+        <option value="100">100 条/页</option>
+        <option value="200">200 条/页</option>
+      </select>
+      <button type="button" class="btn blue" id="codeRefresh">刷新</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>激活码</th><th>状态</th><th>有效期</th><th>绑定设备</th>
+            <th>激活时间</th><th>备注 / 批次</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="codeBody"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pageInfo">—</span>
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost mini" id="prevPage">上一页</button>
+      <button type="button" class="btn ghost mini" id="nextPage">下一页</button>
+    </div>
+  </section>
+</div>
+
+<script src="admin/admin-common.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.Admin;
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { status: '', expired: false, code: '', skip: 0, limit: 50, total: 0, count: 0 };
+  var lastGen = null;
+
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+  function statusOf(it) {
+    if (it.status === 'revoked') return { cls: 'revoked', text: '已作废' };
+    if (it.expireAt && it.expireAt < todayStr()) return { cls: 'expired', text: '已过期' };
+    if (it.status === 'used') return { cls: 'used', text: '已使用' };
+    return { cls: 'unused', text: '未使用' };
+  }
+
+  function render(rows) {
+    var body = $('codeBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">没有符合条件的激活码</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (it) {
+      var st = statusOf(it);
+      var note = [it.note, it.batch].filter(Boolean).join(' · ');
+      var ops = '<button type="button" class="btn mini ghost" data-act="copy" data-id="' + A.esc(it.id) + '">复制</button>';
+      if (it.status !== 'revoked') {
+        ops += '<button type="button" class="btn mini danger" data-act="revoke" data-id="' + A.esc(it.id) + '">作废</button>';
+      }
+      if (it.deviceId && it.status === 'used') {
+        ops += '<button type="button" class="btn mini ghost" data-act="unbind" data-id="' + A.esc(it.id) + '">解绑</button>';
+      }
+      return '<tr>' +
+        '<td class="mono"><b>' + A.esc(it.code) + '</b></td>' +
+        '<td><span class="pill ' + st.cls + '">' + st.text + '</span></td>' +
+        '<td class="mono">' + A.esc(it.expireAt || '2099-12-31') + '</td>' +
+        '<td class="mono ellipsis" title="' + A.esc(it.deviceId) + '">' + (it.deviceId ? A.esc(it.deviceId) : '<span class="muted">—</span>') + '</td>' +
+        '<td>' + (it.usedAt ? A.fmtTime(it.usedAt) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="ellipsis" title="' + A.esc(note) + '">' + (note ? A.esc(note) : '<span class="muted">—</span>') + '</td>' +
+        '<td class="actions">' + ops + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function updatePager() {
+    var total = state.total;
+    var start = total ? state.skip + 1 : 0;
+    var end = Math.min(state.skip + state.count, total);
+    $('pageInfo').textContent = '第 ' + start + '–' + end + ' 条 / 共 ' + total + ' 条';
+    $('codeSummary').textContent = '共 ' + total + ' 条';
+    $('prevPage').disabled = state.skip <= 0;
+    $('nextPage').disabled = state.skip + state.count >= total;
+  }
+
+  function loadCodes() {
+    var params = { skip: state.skip, limit: state.limit };
+    if (state.code) params.code = state.code;
+    else if (state.expired) params.expired = 1;
+    else if (state.status) params.status = state.status;
+    $('codeBody').innerHTML = '<tr><td colspan="7" class="empty">加载中…</td></tr>';
+    A.call('codes', params).then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '加载失败');
+      state.total = r.total || 0;
+      state.count = r.count || 0;
+      render(r.items || []);
+      updatePager();
+    }).catch(function (e) {
+      $('codeBody').innerHTML = '<tr><td colspan="7" class="empty">加载失败：' + A.esc(e.message || e) + '</td></tr>';
+      A.toast('激活码加载失败', true);
+    });
+  }
+
+  function resetAndLoad(next) {
+    state.skip = 0;
+    if (next) Object.assign(state, next);
+    loadCodes();
+  }
+
+  /* 生成 */
+  $('genForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var count = Number($('genCount').value);
+    var expire = $('genExpire').value || '2099-12-31';
+    if (!(count >= 1 && count <= 200)) { A.toast('数量需在 1–200 之间', true); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expire)) { A.toast('请选择有效期', true); return; }
+    $('genBtn').disabled = true;
+    $('genHint').textContent = '正在生成…';
+    A.call('gen', {
+      count: count, expireAt: expire,
+      note: $('genNote').value.trim(), batch: $('genBatch').value.trim()
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '生成失败');
+      lastGen = r;
+      var lines = [
+        '玉灵之音 · 激活码',
+        '生成时间：' + A.fmtTime(Date.now()),
+        '批次：' + r.batch,
+        '有效期：' + r.expireAt,
+        '数量：' + r.count,
+        '（本文件含明文激活码，请妥善保管，不要公开）',
+        ''
+      ].concat(r.codes.map(function (c, i) { return String(i + 1).padStart(3, '0') + '  ' + c; }));
+      $('genOut').value = lines.join('\n');
+      $('genTitle').textContent = '本次生成 ' + r.count + ' 个 · 批次 ' + r.batch + ' · 有效期至 ' + r.expireAt;
+      $('genResult').hidden = false;
+      $('genHint').textContent = r.count < count ? '部分号码冲突，实际生成 ' + r.count + ' 个' : '已生成，请及时保存';
+      if (r.count) resetAndLoad();
+      A.toast('已生成 ' + r.count + ' 个激活码');
+    }).catch(function (err) {
+      $('genHint').textContent = '';
+      A.toast(err.message || '生成失败', true);
+    }).finally(function () { $('genBtn').disabled = false; });
+  });
+
+  $('genCopy').addEventListener('click', function () { A.copy($('genOut').value); });
+  $('genDownload').addEventListener('click', function () {
+    if (!lastGen) return;
+    A.download('激活码-' + lastGen.batch + '-' + todayStr() + '.txt', $('genOut').value);
+  });
+
+  /* 筛选 */
+  $('codeChips').addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    Array.prototype.forEach.call(this.querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
+    chip.classList.add('on');
+    $('codeSearch').value = '';
+    resetAndLoad({
+      status: chip.dataset.status || '',
+      expired: chip.dataset.expired === '1',
+      code: ''
+    });
+  });
+
+  function doSearch() {
+    var code = $('codeSearch').value.trim();
+    if (!code) { A.toast('请输入完整激活码', true); return; }
+    Array.prototype.forEach.call($('codeChips').querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
+    resetAndLoad({ code: code, status: '', expired: false });
+  }
+  $('codeSearchBtn').addEventListener('click', doSearch);
+  $('codeSearch').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+  });
+
+  $('codeLimit').addEventListener('change', function () {
+    resetAndLoad({ limit: Number(this.value) || 50 });
+  });
+  $('codeRefresh').addEventListener('click', function () { loadCodes(); });
+
+  $('prevPage').addEventListener('click', function () {
+    state.skip = Math.max(0, state.skip - state.limit);
+    loadCodes();
+  });
+  $('nextPage').addEventListener('click', function () {
+    if (state.skip + state.count >= state.total) return;
+    state.skip += state.limit;
+    loadCodes();
+  });
+
+  /* 行内操作 */
+  $('codeBody').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var act = btn.dataset.act;
+    var id = btn.dataset.id;
+    if (act === 'copy') { A.copy(id.length === 8 ? id.slice(0, 4) + '-' + id.slice(4) : id); return; }
+    if (act === 'revoke') {
+      if (!confirm('确定作废 ' + id + '？作废后用户将无法再激活。')) return;
+      A.call('revoke', { code: id }).then(function (r) {
+        A.toast(r.ok ? '已作废' : (r.msg || '操作失败'), !r.ok);
+        if (r.ok) loadCodes();
+      }).catch(function () { A.toast('网络异常', true); });
+      return;
+    }
+    if (act === 'unbind') {
+      if (!confirm('确定解绑 ' + id + '？原设备会立即失效，用户可在新设备重新激活。')) return;
+      A.call('unbind', { code: id }).then(function (r) {
+        A.toast(r.ok ? '已解绑' : (r.msg || '操作失败'), !r.ok);
+        if (r.ok) loadCodes();
+      }).catch(function () { A.toast('网络异常', true); });
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', A.logout);
+
+  A.requireLogin(function () { loadCodes(); });
+})();
+</script>
+</body>
+</html>

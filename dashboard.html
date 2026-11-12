@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>数据看板 · 玉灵之音</title>
+<link rel="stylesheet" href="admin/admin.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">玉灵之音 · 管理后台<small>DASHBOARD</small></div>
+    <nav class="nav">
+      <a href="admin.html">激活码管理</a>
+      <a class="on" href="dashboard.html">数据看板</a>
+    </nav>
+    <button type="button" class="logout" id="logoutBtn">退出</button>
+  </header>
+
+  <section class="stats" id="stats">
+    <div class="stat"><h3>今日</h3><div class="nums"><div class="num pv"><b>—</b><span>PV 浏览量</span></div><div class="num uv"><b>—</b><span>UV 访客</span></div></div></div>
+    <div class="stat"><h3>近 7 天</h3><div class="nums"><div class="num pv"><b>—</b><span>PV 浏览量</span></div><div class="num uv"><b>—</b><span>UV 访客</span></div></div></div>
+    <div class="stat"><h3>近 30 天</h3><div class="nums"><div class="num pv"><b>—</b><span>PV 浏览量</span></div><div class="num uv"><b>—</b><span>UV 访客</span></div></div></div>
+    <div class="stat"><h3>全部</h3><div class="nums"><div class="num pv"><b>—</b><span>PV 浏览量</span></div><div class="num uv"><b>—</b><span>UV 访客</span></div></div></div>
+  </section>
+
+  <section class="card" style="padding:12px 16px">
+    <div class="toolbar" style="margin:0">
+      <span class="muted">激活码：</span>
+      <span class="pill unused" id="codeUnused">未使用 —</span>
+      <span class="pill used" id="codeUsed">已使用 —</span>
+      <span class="pill revoked" id="codeRevoked">已作废 —</span>
+      <div class="grow"></div>
+      <span class="muted" id="updatedAt">—</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>访问明细</h2>
+      <p id="visitSummary">每次打开页面记 1 次访问；UV 按设备去重，新访客按首次出现统计</p>
+    </div>
+    <div class="toolbar">
+      <div class="chips" id="rangeChips">
+        <button type="button" class="chip" data-range="today">今日</button>
+        <button type="button" class="chip on" data-range="7d">近 7 天</button>
+        <button type="button" class="chip" data-range="30d">近 30 天</button>
+        <button type="button" class="chip" data-range="all">全部</button>
+      </div>
+      <div class="grow"></div>
+      <select class="select" id="pageSel" aria-label="页面">
+        <option value="">全部页面</option>
+        <option value="h5">H5</option>
+        <option value="pc">PC</option>
+      </select>
+      <input class="input" id="deviceSearch" placeholder="按设备 ID 查询" autocomplete="off">
+      <button type="button" class="btn ghost" id="deviceSearchBtn">查询</button>
+      <select class="select" id="visitLimit" aria-label="每页条数">
+        <option value="50">50 条/页</option>
+        <option value="100">100 条/页</option>
+        <option value="200">200 条/页</option>
+      </select>
+      <button type="button" class="btn blue" id="visitRefresh">刷新</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>时间</th><th>页面</th><th>设备</th><th>IP</th><th>来源</th><th>UA</th></tr>
+        </thead>
+        <tbody id="visitBody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pageInfo">—</span>
+      <div class="spacer"></div>
+      <button type="button" class="btn ghost mini" id="prevPage">上一页</button>
+      <button type="button" class="btn ghost mini" id="nextPage">下一页</button>
+    </div>
+  </section>
+</div>
+
+<script src="admin/admin-common.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.Admin;
+  var $ = function (id) { return document.getElementById(id); };
+  var RANGES = [
+    { key: 'today', label: '今日' },
+    { key: '7d', label: '近 7 天' },
+    { key: '30d', label: '近 30 天' },
+    { key: 'all', label: '全部' }
+  ];
+  var state = { range: '7d', page: '', deviceId: '', skip: 0, limit: 50, total: 0, count: 0 };
+
+  function fmtNum(n) {
+    if (n == null || n < 0) return '—';
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function renderStats(ranges, codes) {
+    ranges = ranges || {};
+    $('stats').innerHTML = RANGES.map(function (r) {
+      var v = ranges[r.key] || {};
+      var nv = v.newVisitors;
+      return '<div class="stat">' +
+        '<h3>' + r.label + '</h3>' +
+        '<div class="nums">' +
+          '<div class="num pv"><b>' + fmtNum(v.pv) + '</b><span>PV 浏览量</span></div>' +
+          '<div class="num uv"><b>' + fmtNum(v.uv) + '</b><span>UV 访客</span></div>' +
+        '</div>' +
+        '<div class="new' + (nv ? '' : ' zero') + '">新访客 ' + fmtNum(nv) + '</div>' +
+      '</div>';
+    }).join('');
+    codes = codes || {};
+    $('codeUnused').textContent = '未使用 ' + fmtNum(codes.unused);
+    $('codeUsed').textContent = '已使用 ' + fmtNum(codes.used);
+    $('codeRevoked').textContent = '已作废 ' + fmtNum(codes.revoked);
+    $('updatedAt').textContent = '更新于 ' + A.fmtTime(Date.now());
+  }
+
+  function refText(ref) {
+    if (!ref) return '<span class="muted">直接访问</span>';
+    var host = ref;
+    try { host = new URL(ref).host || ref; } catch (e) {}
+    return '<span class="ellipsis" style="display:inline-block;max-width:180px" title="' + A.esc(ref) + '">' + A.esc(host) + '</span>';
+  }
+
+  function render(rows) {
+    var body = $('visitBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">没有访问记录</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (d) {
+      var page = d.page === 'pc' ? 'PC' : (d.page === 'h5' ? 'H5' : '—');
+      var cls = d.page === 'pc' || d.page === 'h5' ? d.page : '';
+      var dev = d.deviceId
+        ? '<span class="ellipsis" style="display:inline-block;max-width:150px" title="' + A.esc(d.deviceId) + '">' + A.esc(d.deviceId) + '</span>'
+        : '<span class="muted">—</span>';
+      var ip = d.ip ? A.esc(d.ip) : '<span class="muted">—</span>';
+      var ua = d.ua
+        ? '<span class="ellipsis" style="display:inline-block;max-width:260px" title="' + A.esc(d.ua) + '">' + A.esc(d.ua) + '</span>'
+        : '<span class="muted">—</span>';
+      return '<tr>' +
+        '<td class="mono">' + A.fmtTime(d.ts) + '</td>' +
+        '<td>' + (cls ? '<span class="pill ' + cls + '">' + page + '</span>' : '<span class="muted">—</span>') + '</td>' +
+        '<td class="mono">' + dev + '</td>' +
+        '<td class="mono">' + ip + '</td>' +
+        '<td>' + refText(d.ref) + '</td>' +
+        '<td>' + ua + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function updatePager() {
+    var total = state.total;
+    var start = total ? state.skip + 1 : 0;
+    var end = Math.min(state.skip + state.count, total);
+    $('pageInfo').textContent = '第 ' + start + '–' + end + ' 条 / 共 ' + total + ' 条';
+    $('visitSummary').textContent = '当前筛选共 ' + total + ' 次访问';
+    $('prevPage').disabled = state.skip <= 0;
+    $('nextPage').disabled = state.skip + state.count >= total;
+  }
+
+  function loadVisits() {
+    var params = { range: state.range, skip: state.skip, limit: state.limit };
+    if (state.page) params.page = state.page;
+    if (state.deviceId) params.deviceId = state.deviceId;
+    $('visitBody').innerHTML = '<tr><td colspan="6" class="empty">加载中…</td></tr>';
+    A.call('visits', params).then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '加载失败');
+      state.total = r.total || 0;
+      state.count = r.count || 0;
+      render(r.items || []);
+      updatePager();
+    }).catch(function (e) {
+      $('visitBody').innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + A.esc(e.message || e) + '</td></tr>';
+      A.toast('访问明细加载失败', true);
+    });
+  }
+
+  function loadOverview() {
+    A.call('overview').then(function (r) {
+      if (!r.ok) throw new Error(r.msg || '加载失败');
+      renderStats(r.ranges, r.codes);
+    }).catch(function () { A.toast('统计数据加载失败', true); });
+  }
+
+  function reload() {
+    loadOverview();
+    loadVisits();
+  }
+
+  $('rangeChips').addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    Array.prototype.forEach.call(this.querySelectorAll('.chip'), function (c) { c.classList.remove('on'); });
+    chip.classList.add('on');
+    state.range = chip.dataset.range || '7d';
+    state.skip = 0;
+    loadVisits();
+  });
+
+  $('pageSel').addEventListener('change', function () {
+    state.page = this.value;
+    state.skip = 0;
+    loadVisits();
+  });
+
+  function deviceSearch() {
+    state.deviceId = $('deviceSearch').value.trim();
+    state.skip = 0;
+    loadVisits();
+  }
+  $('deviceSearchBtn').addEventListener('click', deviceSearch);
+  $('deviceSearch').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); deviceSearch(); }
+  });
+
+  $('visitLimit').addEventListener('change', function () {
+    state.limit = Number(this.value) || 50;
+    state.skip = 0;
+    loadVisits();
+  });
+  $('visitRefresh').addEventListener('click', reload);
+
+  $('prevPage').addEventListener('click', function () {
+    if (state.skip <= 0) return;
+    state.skip = Math.max(0, state.skip - state.limit);
+    loadVisits();
+  });
+  $('nextPage').addEventListener('click', function () {
+    if (state.skip + state.count >= state.total) return;
+    state.skip += state.limit;
+    loadVisits();
+  });
+
+  $('logoutBtn').addEventListener('click', A.logout);
+
+  A.requireLogin(function (data) {
+    renderStats(data && data.ranges, data && data.codes);
+    loadVisits();
+  });
+})();
+</script>
+</body>
+</html>

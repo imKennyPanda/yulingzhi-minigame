@@ -25,7 +25,7 @@ const db = app.database();
 const TRIAL_DAYS = 3;
 const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 const DEFAULT_EXPIRE = '2099-12-31';
-const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints'];
+const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints', 'visits', 'visitors'];
 
 let collectionsReady = false;
 async function ensureCollections() {
@@ -131,6 +131,28 @@ async function touchTrial(ctx) {
   return t + TRIAL_MS;
 }
 
+/* 访问记录：visits 记 PV，visitors 按设备记 UV/新访客 */
+async function recordVisit(body, ctx) {
+  const t = Date.now();
+  const page = body.page === 'pc' ? 'pc' : 'h5';
+  const deviceId = normDevice(body.deviceId) || '';
+  const ip = (ctx.ip || '').slice(0, 64);
+  const ua = (ctx.ua || '').slice(0, 200);
+  try {
+    await db.collection('visits').add({
+      ts: t, day: new Date(t + 8 * 3600 * 1000).toISOString().slice(0, 10),
+      deviceId, page, ip, ua, ref: String(body.ref || '').slice(0, 200)
+    });
+  } catch (e) { console.error('[ylz-api] visit', e && (e.message || e)); }
+  if (deviceId) {
+    try {
+      const v = await getDoc('visitors', deviceId);
+      if (v) await db.collection('visitors').doc(deviceId).update({ lastSeen: t, page, ip, ua });
+      else await db.collection('visitors').doc(deviceId).set({ firstSeen: t, lastSeen: t, page, ip, ua });
+    } catch (e) {}
+  }
+}
+
 /* 激活码认领：unused -> used 并绑定设备；同设备重复激活幂等 */
 async function claimCode(code, deviceId) {
   const col = db.collection('activation_codes');
@@ -191,6 +213,7 @@ async function onVerify(body, ctx) {
   if (!deviceId) return fail('BAD_DEVICE');
   const srvNow = Date.now();
   const trialEnd = await touchTrial(ctx);
+  if (body.visit) await recordVisit(body, ctx);
 
   // 老用户迁移 / 本地已保存激活码：自动认领一次（幂等，不影响他人已绑定的码）
   const code = normCode(body.code);

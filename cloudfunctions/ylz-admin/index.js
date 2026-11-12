@@ -25,7 +25,7 @@ const db = app.database();
 
 const DEFAULT_EXPIRE = '2099-12-31';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints'];
+const COLLECTIONS = ['activation_codes', 'devices', 'trial_fingerprints', 'visits', 'visitors', 'config'];
 
 let collectionsReady = false;
 async function ensureCollections() {
@@ -181,6 +181,15 @@ async function rebindCode(p) {
   return { ok: true, code: formatCode(n), deviceId };
 }
 
+/* 设置网页控制台的管理口令（只保存 sha256，明文不落库、不进仓库） */
+async function setAdmin(p) {
+  const token = String(p.token || '').trim();
+  if (token.length < 8) return { ok: false, msg: '口令至少 8 位' };
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  await db.collection('config').doc('admin').set({ tokenHash, updatedAt: Date.now() });
+  return { ok: true, msg: '管理口令已更新' };
+}
+
 async function delCode(p) {
   const id = String(p.code || p.id || '').trim();
   const n = normCode(id);
@@ -191,6 +200,27 @@ async function delCode(p) {
   } catch (e) {
     return { ok: false, msg: '删除失败：' + (e.message || e) };
   }
+}
+
+/* 清理测试/异常访问数据：按 deviceId 删除该设备的访问记录与访客记录 */
+async function delVisits(p) {
+  const deviceId = normDevice(p.deviceId);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(p.day || '')) ? String(p.day) : '';
+  if (!deviceId && !day) return { ok: false, msg: '请提供 deviceId 或 day' };
+  const where = deviceId ? { deviceId } : { day };
+  let removed = 0;
+  try {
+    const r = await db.collection('visits').where(where).limit(1000).get();
+    for (const d of (r.data || [])) {
+      try { await db.collection('visits').doc(d._id).remove(); removed++; } catch (e) {}
+    }
+  } catch (e) {
+    return { ok: false, msg: '删除访问记录失败：' + (e.message || e) };
+  }
+  if (deviceId) {
+    try { await db.collection('visitors').doc(deviceId).remove(); } catch (e) {}
+  }
+  return { ok: true, removed, deviceId: deviceId || '', day };
 }
 
 async function ping() {
@@ -228,6 +258,8 @@ exports.main = async (event) => {
     if (action === 'rebind') return await rebindCode(e);
     if (action === 'stats') return await stats();
     if (action === 'del') return await delCode(e);
+    if (action === 'setadmin') return await setAdmin(e);
+    if (action === 'delvisits') return await delVisits(e);
     if (action === 'ping') return await ping();
     return { ok: false, msg: '未知 action：' + action };
   } catch (err) {

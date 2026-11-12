@@ -12,6 +12,14 @@
       "description": "玉灵之音：激活码校验、一码一设备绑定、服务端试用期判定（HTTP 访问）"
     },
     {
+      "name": "ylz-console",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 20,
+      "memorySize": 256,
+      "description": "玉灵之音：网页管理后台（激活码管理 + PV/UV 看板），口令校验"
+    },
+    {
       "name": "ylz-admin",
       "runtime": "Nodejs20.19",
       "handler": "index.main",

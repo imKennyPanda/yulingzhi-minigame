@@ -14,6 +14,8 @@
  *   node tools/cloudbase-admin.js revoke AB12-CD34
  *   node tools/cloudbase-admin.js unbind AB12-CD34          # 用户换设备：解绑后可用新设备重新激活
  *   node tools/cloudbase-admin.js rebind AB12-CD34 <deviceId>
+ *   ADMIN_TOKEN=你的口令 node tools/cloudbase-admin.js setadmin   # 设置网页后台管理口令
+ *   node tools/cloudbase-admin.js delvisits <deviceId>             # 删除某设备的访问记录（清理测试数据）
  */
 'use strict';
 const fs = require('fs');
@@ -138,6 +140,20 @@ function print(obj) { console.log(JSON.stringify(obj, null, 2)); }
       action: 'list', status: args.status || '', batch: args.batch || '',
       code: args.code || '', limit: Number(args.limit) || 50
     }));
+    return;
+  }
+
+  if (action === 'setadmin') {
+    const token = process.env.ADMIN_TOKEN || args._[1];
+    if (!token) { console.error('用法：ADMIN_TOKEN=你的口令 node tools/cloudbase-admin.js setadmin'); process.exit(1); }
+    print(invoke({ action: 'setadmin', token }));
+    return;
+  }
+
+  if (action === 'delvisits') {
+    const deviceId = args._[1] || '';
+    if (!deviceId && !args.day) { console.error('用法：delvisits <deviceId> 或 delvisits --day 2026-11-12'); process.exit(1); }
+    print(invoke({ action: 'delvisits', deviceId, day: args.day || '' }));
     return;
   }
 

@@ -2705,6 +2705,7 @@ const normCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const DEVICE_KEY = 'ylz.device.v1';
 const DEVICE_CK = 'ylz_device';
 const SERVER_KEY = 'ylz.server.v1';
+const PAGE_NAME = /pc\.html$/i.test(location.pathname) ? 'pc' : 'h5';
 let serverState = null;
 let refreshing = false;
 
@@ -2766,11 +2767,16 @@ function applyServerState(r) {
   saveServerState();
   return true;
 }
-async function refreshServerState() {
+async function refreshServerState(isVisit) {
   if (refreshing) return false;
   refreshing = true;
   try {
-    const r = await payApi('verify', { code: (trial && trial.code) || '' });
+    const r = await payApi('verify', {
+      code: (trial && trial.code) || '',
+      page: PAGE_NAME,
+      visit: isVisit ? 1 : 0,
+      ref: document.referrer || ''
+    });
     if (!applyServerState(r)) return false;
     if (serverState.activated) { trial = trial || {}; trial.tampered = false; saveTrial(false); }
     refreshPay();
@@ -3003,7 +3009,7 @@ function bootTrial() {
   trial = m;
   saveTrial(false);
   refreshPay();
-  refreshServerState();              // 联网后以服务端试用期/激活状态为准
+  refreshServerState(true);          // 联网后以服务端试用期/激活状态为准，并记一次访问
 
   // 异步补全 IndexedDB 里的记录 + 校准服务器时间
   (async () => {
