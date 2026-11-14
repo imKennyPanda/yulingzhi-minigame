@@ -333,6 +333,18 @@
   .c-card.tone b { font-size: 26px; }
   .c-card.zi b { font-size: 27px; color: #3D3350; }
   .c-card.zi span { color: #FF85BD; }
+  .c-card.ipa b { font-size: 17px; letter-spacing: .3px; }
+  /* 音标表分组标题 */
+  .ipa-t { margin: 16px 0 2px; font-size: 15px; font-weight: 800; color: #FF6FAE; }
+  .ipa-sub { font-size: 13px; font-weight: 800; color: #7A6B8F; margin: 10px 0 6px; padding-left: 8px; border-left: 3px solid #FFB0D4; }
+  /* 阶梯乘法口诀表 */
+  .tt-wrap { overflow-x: auto; padding: 4px 2px 10px; -webkit-overflow-scrolling: touch; }
+  .tt-row { display: flex; }
+  .tt-cell {
+    min-width: 70px; padding: 10px 4px; text-align: center; font-size: 14.5px; font-weight: 800; color: #3D3350;
+    background: #fff; border: 1.5px solid #E7DBF2; cursor: pointer; user-select: none; transition: .12s; white-space: nowrap;
+  }
+  .tt-cell:active { transform: scale(.93); background: #FFEFF7; border-color: #FF85BD; color: #FF6FAE; }
 
   /* ---------- 自定义头像 ---------- */
   .st-av { position: relative; cursor: pointer; }
@@ -1340,7 +1352,7 @@ function pickEnVoice() {
 if ('speechSynthesis' in window) { pickEnVoice(); speechSynthesis.onvoiceschanged = pickEnVoice; }
 const speakEn = (text, rate, onDone) => speak(text, rate || 0.85, onDone, 'en-US');
 /* 高级版 · 乘法口诀朗读（中文 TTS） */
-const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘 ${b} 等于几` : `${a} 乘 ${b} 等于 ${ans}`, 0.8, onDone);
+const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘以 ${b} 等于几` : `${a} 乘以 ${b} 等于 ${ans}`, 0.8, onDone);
 /* 出新题时自动朗读：乘法读算式、英语读单词（浏览器拦截时用户点题卡可再听） */
 function speakNewQuestion(q) {
   if (!q) return;
@@ -1626,18 +1638,19 @@ function enWordPool() {
 function newEnQuestion() {
   const pool = enWordPool();
   const t = pool[rnd(0, pool.length - 1)];
-  // 干扰段：从同词库其它单词的音段里抽，避免与正确段重复
-  const wrong = [];
-  const segSet = new Set(t.seg);
-  for (let i = 0; i < 200 && wrong.length < 3; i++) {
-    const o = pool[rnd(0, pool.length - 1)];
-    const s = o.seg[rnd(0, o.seg.length - 1)];
-    if (!segSet.has(s) && !wrong.includes(s)) wrong.push(s);
-  }
-  const opts = [...t.seg, ...wrong];
-  for (let i = opts.length - 1; i > 0; i--) { const j = rnd(0, i); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+  // 每个音标段一组选项（正确段 + 3 个干扰段），参考拼音-拼写练习的分区选法
+  const secOpts = t.seg.map(s => {
+    const opts = [];
+    for (let i = 0; i < 200 && opts.length < 3; i++) {
+      const o = pool[rnd(0, pool.length - 1)];
+      const c = o.seg[rnd(0, o.seg.length - 1)];
+      if (!t.seg.includes(c) && !opts.includes(c)) opts.push(c);
+    }
+    opts.splice(rnd(0, opts.length), 0, s);   // 正确段随机插进本区选项
+    return opts;
+  });
   return { kind: 'en', top: null, parts: [null, null], flip: false,
-           w: t.w, cn: t.cn, ipa: t.ipa, seg: t.seg, opts, answer: t.w };
+           w: t.w, cn: t.cn, ipa: t.ipa, seg: t.seg, secOpts, answer: t.w };
 }
 function newPinyinQuestion(progress = STEPS - 1, target = null) {
   const unlocked = pinyinPool(progress);
@@ -1988,13 +2001,20 @@ function mulDiagram(q, pick) {
     ${num(110, 108, q.answer, true)}
   </svg>`;
 }
-/* 高级版 · 英语题图：上=单词（默认藏中文，点小眼睛显示）+ 点读；下=音标段槽位 */
+/* 高级版 · 英语题图：上=单词（默认藏中文，点小眼睛显示）+ 点读；下=音标段槽位（拼好的段可点听整词） */
 function enDiagram(q, picks, showCn) {
   const eyeSvg = show => show
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const n = q.seg.length;
   const slot = (val, i) =>
-    `<div class="pyb-slot${val ? ' filled' : ''}"><b class="en-slot-seg">${val || '?'}</b><span>音标段 ${i + 1}</span></div>`;
+    `<div class="pyb-slot${val ? ' filled clickable' : ''}"${val ? ` data-en-say="${q.w}"` : ''}><b class="en-slot-seg">${val || '?'}</b><span>第 ${i + 1} 段</span></div>`;
+  // 连接线：与拼音拼写练习一致，从单词往每个槽位引一条线
+  const xs = Array.from({ length: n }, (_, i) => Math.round(150 + (i - (n - 1) / 2) * 104));
+  const links = n > 1
+    ? `<svg class="pyb-links" viewBox="0 0 300 24" preserveAspectRatio="none">`
+      + xs.map(x => `<path class="link" d="M150 0 L${x} 24"/>`).join('') + '</svg>'
+    : '';
   return `<div class="pyb-wrap">
     <div class="pyb-top en-top" data-en-say="${q.w}">
       <b class="en-word">${q.w}</b><i class="en-cn${showCn ? '' : ' is-hidden'}">${q.cn}</i>
@@ -2003,6 +2023,7 @@ function enDiagram(q, picks, showCn) {
         <span class="pyb-eye" role="button" tabindex="0" title="${showCn ? '隐藏中文' : '显示中文'}" aria-label="显示或隐藏中文">${eyeSvg(showCn)}</span>
       </span>
     </div>
+    ${links}
     <div class="pyb-row">
       ${q.seg.map((s, i) => slot(picks[i] || '', i)).join('')}
     </div>
@@ -2158,22 +2179,24 @@ function renderPad(g) {
     }
     return;
   }
-  if (g.q.kind === 'en') {                        // 高级版 · 英语：按顺序点音段填槽
-    g.padEl.innerHTML = `<div class="pad-cap">按顺序点音标段 · 拼出单词读音</div><div class="pad-grid" style="grid-template-columns:repeat(4,1fr)"></div>`;
-    const grid = g.padEl.querySelector('.pad-grid');
-    const picks = g.enPicks || [];
-    g.q.opts.forEach(v => {
-      const k = document.createElement('div');
-      k.className = 'key charKey en-slot-seg';
-      k.textContent = v;
+  if (g.q.kind === 'en') {                        // 高级版 · 英语：参考拼音拼写练习，一段一区选音标段
+    g.padEl.style.display = 'block';
+    const labels = '①②③④⑤';
+    let html = '<div class="pyb-sections">';
+    g.q.secOpts.forEach((opts, i) => {
+      html += `<div class="pyb-sec wide"><div class="pad-cap">${labels[i]} 选第 ${i + 1} 段（可重选）</div><div class="pad-grid">`
+        + opts.map(v => `<div class="key charKey en-slot-seg${(g.enPicks || [])[i] === v ? ' sel' : ''}" data-i="${i}" data-v="${v}">${v}</div>`).join('')
+        + '</div></div>';
+    });
+    html += '</div>';
+    g.padEl.innerHTML = html;
+    g.padEl.querySelectorAll('.key').forEach(k => {
       k.onclick = () => {
         if (g.done || g.lock || finished) return;
         if (!g.enPicks) g.enPicks = [];
-        if (g.enPicks.length >= g.q.seg.length) return;
-        g.enPicks.push(v);
+        g.enPicks[+k.dataset.i] = k.dataset.v;    // 点其它选项即替换（可重选）
         render(g);
       };
-      grid.appendChild(k);
     });
     return;
   }
@@ -2199,7 +2222,7 @@ function render(g) {
   g.okEl.disabled = g.q.kind === 'pyblend'
     ? (g.q.whole ? !g.pickWhole : !(g.pickSm && g.pickYm && g.pickTone))
     : g.q.kind === 'en'
-      ? !(g.enPicks && g.enPicks.length === g.q.seg.length)
+      ? !(g.enPicks && g.q.seg.every((_, i) => g.enPicks[i]))
       : g.pick === null;
   if (g.helpEl) {
     const py = !!g.q.kind;
@@ -2244,7 +2267,7 @@ function submit(g) {
     if (g.q.whole ? !g.pickWhole : (!g.pickSm || !g.pickYm || !g.pickTone)) return;
   }
   else if (g.q.kind === 'en') {
-    if (!g.enPicks || g.enPicks.length !== g.q.seg.length) return;
+    if (!g.enPicks || !g.q.seg.every((_, i) => g.enPicks[i])) return;
   }
   else if (g.pick === null) return;
   g.lock = true;
@@ -2368,7 +2391,7 @@ function bannerFor(m) {
     return m === 'challenge' ? '⏱ 限时听音辨字 · 答错退一格 🏁' : '🔊 听音辨字 · 前进一格 🏁';
   }
   if (SUBJECT === 'mul')  return m === 'challenge' ? '⏱ 限时乘法 · 答错退一格 🏁' : '✖️ 乘法练习 · 听算式选答案 🏁';
-  if (SUBJECT === 'en')   return m === 'challenge' ? '⏱ 限时单词 · 答错退一格 🏁' : '🔤 听发音 · 按顺序选音标段 🏁';
+  if (SUBJECT === 'en')   return m === 'challenge' ? '⏱ 限时单词 · 答错退一格 🏁' : '🔤 听发音 · 分段拼出单词读音 🏁';
   if (m === 'challenge') return '⏱ 限时挑战 · 答错退一格 🏁';
   if (m === 'custom')    return '✏️ 自定义出题 · 教师定题 🏁';
   return '🏃 答对一题 · 前进一格 🏁';
@@ -2778,8 +2801,8 @@ buildChart();
 
 /* ---------------- 高级版 · 三个新点读表 ---------------- */
 const PREM_TABLES = new Set(['abc', 'ipa', 'times']);
-function tableCard(big, small, attrs) {
-  return `<div class="c-card"${attrs}><b>${big}</b><span>${small}</span></div>`;
+function tableCard(big, small, attrs, cls) {
+  return `<div class="c-card ${cls || ''}"${attrs}><b>${big}</b><span>${small}</span></div>`;
 }
 function buildAbcTable() {
   const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.alphabet) || [];
@@ -2788,21 +2811,31 @@ function buildAbcTable() {
   return html;
 }
 function buildIpaTable() {
-  const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.phonetics48) || [];
-  let html = `<h4>ABC 音标表（${D.length} 个国际音标 · 点击听例词）</h4><div class="c-grid">`
-    + D.map(x => tableCard(x.p, `${x.ex} ${x.cn}`, ` data-say="${x.ex}" data-kind="en"`)).join('') + '</div>';
+  const G = (window.PREMIUM_DATA && window.PREMIUM_DATA.phonetics) || [];
+  const total = G.reduce((a, g) => a + g.subs.reduce((b, s) => b + s.items.length, 0), 0);
+  let html = `<h4>ABC 音标表（美式发音 ${total} 个 · 点击听音标发音）</h4>`;
+  G.forEach(grp => {
+    html += `<div class="ipa-t">${grp.t}</div>`;
+    grp.subs.forEach(s => {
+      if (s.name) html += `<div class="ipa-sub">${s.name}</div>`;
+      html += '<div class="c-grid">'
+        + s.items.map(x => tableCard(`[${x.p}]`, `${x.ex} ${x.cn}`, ` data-say="${x.say}" data-kind="en"`, 'ipa')).join('')
+        + '</div>';
+    });
+  });
   return html;
 }
 function buildTimesTable() {
-  let html = '';
+  let rows = '';
   for (let a = 1; a <= 9; a++) {
-    html += `<h4>${a} 的乘法口诀</h4><div class="c-grid">`
-      + Array.from({ length: 9 }, (_, i) => {
-          const b = i + 1;
-          return tableCard(`${a}×${b}`, `= ${a * b}`, ` data-say="${a}乘${b}等于${a * b}" data-kind="zh"`);
-        }).join('') + '</div>';
+    rows += '<div class="tt-row">'
+      + Array.from({ length: a }, (_, i) => {
+          const b = i + 1, p = a * b;
+          return `<div class="tt-cell" data-say="${a}乘以${b}等于${p}" data-kind="zh">${a}×${b}=${p}</div>`;
+        }).join('')
+      + '</div>';
   }
-  return html;
+  return `<h4>99 乘法口诀表（阶梯式 · 点击格子读口诀）</h4><div class="tt-wrap">${rows}</div>`;
 }
 const tableSel = document.getElementById('tableSel');
 tableSel.onchange = () => {
