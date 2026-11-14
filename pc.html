@@ -729,7 +729,7 @@
   </div>
 </div>
 
-<script src="data-premium.js"></script>
+<script src="data-premium.js?v=20261114b"></script>
 <script>
 /* ---------------- 缩放自适应 ---------------- */
 const board = document.getElementById('board');
@@ -1457,6 +1457,29 @@ function pickEnVoice() {
 }
 if ('speechSynthesis' in window) { pickEnVoice(); speechSynthesis.onvoiceschanged = pickEnVoice; }
 const speakEn = (text, rate, onDone) => speak(text, rate || 0.85, onDone, 'en-US');
+/* 音标段发音：把 IPA 段映射成 TTS 近似读法（映射取自音标表数据），无映射时原样朗读 */
+let ipaSayMap = null;
+function segSayText(seg) {
+  if (!ipaSayMap && window.PREMIUM_DATA) {
+    ipaSayMap = {};
+    (window.PREMIUM_DATA.phonetics || []).forEach(gr => (gr.subs || []).forEach(s => (s.items || []).forEach(x => { if (x.p && x.say) ipaSayMap[x.p] = x.say; })));
+    const EXTRA = { 'ɒ':'o', 'ɝː':'err', 'ɜː':'err', 'əʊ':'oh', 'ɪə':'eer', 'eə':'air', 'ʊə':'oor', 'a':'ay', 'e':'eh', 'i':'ee', 'o':'oh', 'u':'oo' };
+    for (const k in EXTRA) if (!ipaSayMap[k]) ipaSayMap[k] = EXTRA[k];   // 兜底：词库里的旧式音标
+  }
+  if (!ipaSayMap) return seg;
+  let out = '';
+  for (let i = 0; i < seg.length;) {
+    let hit = '';
+    for (let L = Math.min(3, seg.length - i); L >= 1; L--) {
+      const k = seg.slice(i, i + L);
+      if (ipaSayMap[k]) { hit = ipaSayMap[k]; i += L; break; }
+    }
+    if (hit) out += (out ? ' ' : '') + hit;
+    else i++;
+  }
+  return out || seg;
+}
+const enSegSpeak = seg => speakEn(segSayText(seg), 0.75);
 /* 高级版 · 乘法口诀朗读（中文 TTS） */
 const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘以 ${b} 等于几` : `${a} 乘以 ${b} 等于 ${ans}`, 0.8, onDone);
 /* 出新题时自动朗读：乘法读算式、英语读单词（浏览器拦截时用户点题卡可再听） */
@@ -2021,7 +2044,7 @@ function enDiagram(q, picks, showCn) {
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const n = q.seg.length;
   const slot = (val, i) =>
-    `<div class="pyb-slot${val ? ' filled clickable' : ''}"${val ? ` data-en-say="${q.w}"` : ''}><b class="en-slot-seg">${val || '?'}</b><span>第 ${i + 1} 段</span></div>`;
+    `<div class="pyb-slot${val ? ' filled clickable' : ''}"${val ? ` data-en-seg="${val}"` : ''}><b class="en-slot-seg">${val || '?'}</b><span>第 ${i + 1} 段</span></div>`;
   // 连接线：与拼音拼写练习一致，从单词往每个槽位引一条线
   const xs = Array.from({ length: n }, (_, i) => Math.round(150 + (i - (n - 1) / 2) * 104));
   const links = n > 1
@@ -2093,6 +2116,8 @@ GROUPS.forEach(g => {
       g.showPy = !g.showPy; render(g); return;                              // 拼音：显示/隐藏拼音
     }
     if (g.q.kind === 'en') {
+      const segEl = e.target.closest('[data-en-seg]');
+      if (segEl) { enSegSpeak(segEl.dataset.enSeg); return; }               // 点已选槽位听该段音
       const w = e.target.closest('[data-en-say]');
       if (w) { speakEn(g.q.w, 0.85); return; }                              // 点单词听发音
       return;
@@ -2305,7 +2330,8 @@ function renderPad(g) {
       k.onclick = () => {
         if (g.done || g.lock || finished) return;
         if (!g.enPicks) g.enPicks = [];
-        g.enPicks[+k.dataset.i] = k.dataset.v;    // 点其它选项即替换（可重选）
+        enSegSpeak(k.dataset.v);                    // 点选项先发音标段
+        g.enPicks[+k.dataset.i] = k.dataset.v;      // 点其它选项即替换（可重选）
         render(g);
       };
     });
@@ -2915,7 +2941,13 @@ function buildAbcTable() {
     + D.map(x => tableCard(x.L, x.word, ` data-say="${x.L}" data-kind="en"`)).join('') + '</div>';
 }
 function buildIpaTable() {
-  const G = (window.PREMIUM_DATA && window.PREMIUM_DATA.phonetics) || [];
+  const D = (window.PREMIUM_DATA || {});
+  const G = D.phonetics || [];
+  if (!G.length) {                                  // 兼容旧数据结构（phonetics48 平铺），避免表空白
+    const F = D.phonetics48 || [];
+    return `<h4>ABC 音标表（${F.length} 个国际音标 · 点击听例词）</h4><div class="c-grid">`
+      + F.map(x => tableCard(x.p, `${x.ex} ${x.cn}`, ` data-say="${x.ex}" data-kind="en"`)).join('') + '</div>';
+  }
   const total = G.reduce((a, g) => a + g.subs.reduce((b, s) => b + s.items.length, 0), 0);
   let html = `<h4>ABC 音标表（美式发音 ${total} 个 · 点击听音标发音）</h4>`;
   G.forEach(grp => {
