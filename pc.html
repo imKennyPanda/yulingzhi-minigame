@@ -1432,6 +1432,7 @@ document.addEventListener('visibilitychange', () => {
   try { GROUPS.forEach(g => { if (g && g.q) preloadQuestionAudio(g.q); }); } catch (e) {}
 });
 function speak(text, rate, onDone, lang) {
+  try { stopIpa(); } catch (e) {}
   if (!('speechSynthesis' in window) || !text) { if (onDone) onDone(); return; }
   try {
     speechSynthesis.cancel();
@@ -1479,7 +1480,95 @@ function segSayText(seg) {
   }
   return out || seg;
 }
-const enSegSpeak = seg => speakEn(segSayText(seg), 0.75);
+/* 音标真人录音（audio/ipa/*.wav，来源与许可见 audio/ipa/README.md）。
+   音标表与音标游戏共用同一套录音和同一套拆分规则，保证两处发音完全一致。
+   一个音标可能由一个或多个音素组成（双元音、ɜːr、tʃ、tr 等），按顺序播放。 */
+const IPA_CLIPS = {
+  'i':'i', 'ɪ':'ih', 'e':'eh', 'ɛ':'eh', 'æ':'ae', 'ɜ':'er', 'ə':'schwa', 'ʌ':'uh',
+  'u':'u', 'ʊ':'ups', 'ɔ':'aw', 'ɒ':'aw', 'ɑ':'ah', 'a':'a', 'o':'o', 'ɨ':'ih', 'ɘ':'schwa',
+  'p':'p', 't':'t', 'k':'k', 'f':'f', 's':'s', 'θ':'th', 'ʃ':'sh', 'tʃ':'ch',
+  'b':'b', 'd':'d', 'g':'g', 'ɡ':'g', 'v':'v', 'z':'z', 'ð':'dh', 'ʒ':'zh', 'dʒ':'j',
+  'm':'m', 'n':'n', 'ŋ':'ng', 'l':'l', 'r':'r', 'ɹ':'r', 'j':'y', 'w':'w', 'h':'h'
+};
+/* 先匹配多字符音标，再落到单音素 */
+const IPA_LONG = [
+  ['tʃ', ['ch']], ['dʒ', ['j']],
+  ['eɪ', ['e', 'ih']], ['aɪ', ['a', 'ih']], ['ɔɪ', ['aw', 'ih']], ['oʊ', ['o', 'ups']], ['aʊ', ['a', 'ups']],
+  ['ɪr', ['ih', 'r']], ['er', ['eh', 'r']], ['ʊr', ['ups', 'r']],
+  ['ɚ', ['schwa', 'r']], ['ɝ', ['er', 'r']],
+  ['ts', ['t', 's']], ['dz', ['d', 'z']], ['tr', ['t', 'r']], ['dr', ['d', 'r']]
+];
+let ipaPlaySeq = 0, ipaCurrent = null;
+const ipaAudioCache = {};
+function ipaAudioOf(slug) {
+  let a = ipaAudioCache[slug];
+  if (!a) { a = new Audio('audio/ipa/' + slug + '.wav'); a.preload = 'auto'; ipaAudioCache[slug] = a; }
+  return a;
+}
+function ipaClips(text) {
+  const s = String(text || '').replace(/[ˈˌ.·\s()\/\[\]‿]/g, '').replace(/[ːˑ̯͜͡]/g, '');
+  const out = [];
+  for (let i = 0; i < s.length;) {
+    let seq = null;
+    for (let k = 0; k < IPA_LONG.length; k++) {
+      if (s.startsWith(IPA_LONG[k][0], i)) { seq = IPA_LONG[k][1]; i += IPA_LONG[k][0].length; break; }
+    }
+    if (seq) { for (const x of seq) out.push(x); continue; }
+    const c = s[i++];
+    if (IPA_CLIPS[c]) out.push(IPA_CLIPS[c]);
+  }
+  return out;
+}
+function warmIpa(text) {
+  ipaClips(text).forEach(slug => { try { const a = ipaAudioOf(slug); if (a.readyState < 2) a.load(); } catch (e) {} });
+}
+function stopIpa() {
+  ipaPlaySeq++;
+  if (ipaCurrent) { try { ipaCurrent.pause(); } catch (e) {} ipaCurrent = null; }
+}
+function playIpa(text, onDone) {
+  stopIpa();
+  try { speechSynthesis.cancel(); } catch (e) {}
+  const clips = ipaClips(text);
+  if (!clips.length) { if (onDone) onDone(); return false; }
+  const token = ipaPlaySeq;
+  let i = 0;
+  const next = () => {
+    if (token !== ipaPlaySeq) return;
+    if (i >= clips.length) { ipaCurrent = null; if (onDone) onDone(); return; }
+    const a = ipaAudioOf(clips[i++]);
+    ipaCurrent = a;
+    try { a.currentTime = 0; } catch (e) {}
+    const go = () => {
+      if (token !== ipaPlaySeq) return;
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
+        if (token === ipaPlaySeq) setTimeout(next, 40);
+      };
+      a.onended = advance;
+      a.onerror = advance;
+      let p = null;
+      try { p = a.play(); } catch (e) { advance(); return; }
+      if (p && p.catch) p.catch(advance);
+      // 兜底：个别浏览器/后台标签页不触发 ended，按录音时长推进，避免卡住
+      const wait = (isFinite(a.duration) && a.duration > 0 ? a.duration * 1000 : 900) + 350;
+      setTimeout(advance, wait);
+    };
+    if (a.readyState >= 2) go();
+    else {
+      let started = false;
+      const start = () => { if (started) return; started = true; go(); };
+      a.oncanplaythrough = start;
+      try { a.load(); } catch (e) { start(); }
+      setTimeout(start, 1500);   // 录音加载超时也继续，避免整段卡住
+    }
+  };
+  next();
+  return true;
+}
+const enSegSpeak = seg => { if (!playIpa(seg)) speakEn(segSayText(seg), 0.75); };
 /* 高级版 · 乘法口诀朗读（中文 TTS） */
 const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘以 ${b} 等于几` : `${a} 乘以 ${b} 等于 ${ans}`, 0.8, onDone);
 /* 出新题时自动朗读：乘法读算式、英语读单词（浏览器拦截时用户点题卡可再听） */
@@ -2355,6 +2444,7 @@ function renderPad(g) {
 }
 function render(g) {
   g.qEl.innerHTML = diagramHTML(g);
+  if (g.q.kind === 'en') warmIpa((g.q.seg || []).join(''));   // 提前载入本题会用到的音标录音
   renderPad(g);
   g.okEl.disabled = g.q.kind === 'pyblend'
     ? (g.q.whole ? !g.pickWhole : !(g.pickSm && g.pickYm && g.pickTone))
@@ -2955,7 +3045,7 @@ function buildIpaTable() {
     grp.subs.forEach(s => {
       if (s.name) html += `<div class="ipa-sub">${s.name}</div>`;
       html += '<div class="c-grid">'
-        + s.items.map(x => tableCard(`[${x.p}]`, `${x.ex} ${x.cn}`, ` data-say="${x.say}" data-kind="en"`, 'ipa')).join('')
+        + s.items.map(x => tableCard(`[${x.p}]`, `${x.ex} ${x.cn}`, ` data-say="${x.say}" data-ipa="${x.p}" data-kind="en"`, 'ipa')).join('')
         + '</div>';
     });
   });
@@ -2995,6 +3085,7 @@ document.getElementById('chartFs').onclick = () => {
 maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
   if (!t) return;
+  if (t.dataset.ipa) { playIpa(t.dataset.ipa); return; }
   if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
   else if (t.dataset.kind === 'en') speakEn(t.dataset.say, 0.75);
   else if (t.dataset.kind === 'zh') speak(t.dataset.say, 0.8);
@@ -3415,7 +3506,7 @@ bootTrial();
 const PREM_CFG = {
   days: 7,
   price: '99',
-  qrSrc: 'img/premium-qr.jpg',    // 高级版个微引流二维码
+  qrSrc: 'img/premium-qr.jpg?v=2',    // 高级版个微引流二维码
   wxId: 'julie686817'             // 客服微信（与基础版相同）
 };
 const PREM_TRIAL_MS = PREM_CFG.days * 24 * 60 * 60 * 1000;
