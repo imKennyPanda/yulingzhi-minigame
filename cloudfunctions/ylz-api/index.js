@@ -252,7 +252,7 @@ async function recordVisit(body, ctx) {
  * 一个码最多绑定 MAX_DEVICES 台设备（手机 H5 / 平板 / 电脑），
  * 已绑列表存 activation_codes.devices；deviceId 保留为首台设备以兼容旧数据。
  */
-/* 档位：premium = 99 元高级版（含基础版全部权益）；缺省视为 basic（9.9 基础版） */
+/* 档位：premium = 99 元高级版（与基础版分开收费）；缺省视为 basic（9.9 基础版） */
 function tierOf(doc) { return doc && doc.tier === 'premium' ? 'premium' : 'basic'; }
 
 async function claimCode(code, deviceId, ctx) {

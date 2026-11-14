@@ -28,8 +28,8 @@ H5 / PC 双端拼音练习游戏。
 
 ## 素材与许可
 
-- 音标真人录音：`audio/ipa/`，来源、处理方式和音标对应表见 [audio/ipa/README.md](audio/ipa/README.md)（CC BY-SA 4.0）。
-- 音标表与音标游戏共用同一套录音文件，发音一致。
+- 英语发音：音标表、发音练习、单词练习统一使用浏览器 **en-US 女声**（TTS），保证整词和音标段音色一致；音标表点音标后 0.5 秒自动读例词。
+- `audio/ipa/` 保留开放许可的真人音标录音，仅在设备不支持语音合成时作为回退；来源与许可见 [audio/ipa/README.md](audio/ipa/README.md)（CC BY-SA 4.0）。
 
 ## 注意
 
