@@ -252,6 +252,9 @@ async function recordVisit(body, ctx) {
  * 一个码最多绑定 MAX_DEVICES 台设备（手机 H5 / 平板 / 电脑），
  * 已绑列表存 activation_codes.devices；deviceId 保留为首台设备以兼容旧数据。
  */
+/* 档位：premium = 99 元高级版（含基础版全部权益）；缺省视为 basic（9.9 基础版） */
+function tierOf(doc) { return doc && doc.tier === 'premium' ? 'premium' : 'basic'; }
+
 async function claimCode(code, deviceId, ctx) {
   const col = db.collection('activation_codes');
   const doc = await getDoc('activation_codes', code);
@@ -259,10 +262,11 @@ async function claimCode(code, deviceId, ctx) {
   if (doc.status === 'revoked') return { error: 'REVOKED' };
   const expireAt = doc.expireAt || DEFAULT_EXPIRE;
   if (isExpired(expireAt)) return { error: 'EXPIRED', expireAt };
+  const tier = tierOf(doc);
 
   const bound = boundDevices(doc);
   const ids = bound.map(x => x.id);
-  if (ids.includes(deviceId)) return { ok: true, expireAt, devices: ids };
+  if (ids.includes(deviceId)) return { ok: true, expireAt, tier, devices: ids };
 
   if (doc.status === 'used') {
     if (ids.length >= MAX_DEVICES) return { error: 'USED_OTHER', limit: MAX_DEVICES };
@@ -272,7 +276,7 @@ async function claimCode(code, deviceId, ctx) {
     } catch (e) {
       return { error: 'SERVER_ERROR' };
     }
-    return { ok: true, expireAt, devices: devices.map(x => x.id) };
+    return { ok: true, expireAt, tier, devices: devices.map(x => x.id) };
   }
 
   const first = newDeviceEntry(deviceId, ctx);
@@ -284,7 +288,7 @@ async function claimCode(code, deviceId, ctx) {
   } catch (e) {
     r = null;
   }
-  if (r && r.updated) return { ok: true, expireAt, devices: [deviceId] };
+  if (r && r.updated) return { ok: true, expireAt, tier, devices: [deviceId] };
 
   // 并发：被另一台设备抢先占用，按最新状态再判断一次
   const latest = await getDoc('activation_codes', code);
@@ -292,10 +296,11 @@ async function claimCode(code, deviceId, ctx) {
   if (latest.status === 'revoked') return { error: 'REVOKED' };
   const latestExpire = latest.expireAt || DEFAULT_EXPIRE;
   if (isExpired(latestExpire)) return { error: 'EXPIRED', expireAt: latestExpire };
+  const latestTier = tierOf(latest);
   if (latest.status === 'unused') return { error: 'SERVER_ERROR' };
   const lb = boundDevices(latest);
   const lids = lb.map(x => x.id);
-  if (lids.includes(deviceId)) return { ok: true, expireAt: latestExpire, devices: lids };
+  if (lids.includes(deviceId)) return { ok: true, expireAt: latestExpire, tier: latestTier, devices: lids };
   if (lids.length >= MAX_DEVICES) return { error: 'USED_OTHER', limit: MAX_DEVICES };
   const devices = lb.concat([newDeviceEntry(deviceId, ctx)]);
   try {
@@ -303,7 +308,7 @@ async function claimCode(code, deviceId, ctx) {
   } catch (e) {
     return { error: 'SERVER_ERROR' };
   }
-  return { ok: true, expireAt: latestExpire, devices: devices.map(x => x.id) };
+  return { ok: true, expireAt: latestExpire, tier: latestTier, devices: devices.map(x => x.id) };
 }
 
 async function bindDevice(deviceId, code, expireAt, ctx) {
@@ -335,7 +340,7 @@ async function onActivate(body, ctx) {
   }
   await bindDevice(deviceId, code, res.expireAt, ctx);
   return {
-    ok: true, activated: true, expireAt: res.expireAt,
+    ok: true, activated: true, expireAt: res.expireAt, tier: res.tier || 'basic',
     devices: res.devices || [deviceId], maxDevices: MAX_DEVICES, serverNow: Date.now()
   };
 }
@@ -354,7 +359,7 @@ async function onVerify(body, ctx) {
     if (res.ok) await bindDevice(deviceId, code, res.expireAt, ctx);
   }
 
-  let activated = false, expired = false, expireAt = null, status = 'trial';
+  let activated = false, expired = false, expireAt = null, status = 'trial', tier = 'basic';
   const dev = await getDoc('devices', deviceId);
   if (dev && dev.activated && dev.code) {
     const c = await getDoc('activation_codes', dev.code);
@@ -366,11 +371,27 @@ async function onVerify(body, ctx) {
       status = 'moved';
     } else {
       expireAt = c.expireAt || dev.expireAt || DEFAULT_EXPIRE;
+      tier = tierOf(c);
       if (isExpired(expireAt, srvNow)) { expired = true; status = 'expired'; }
       else { activated = true; status = 'active'; }
     }
   }
-  return { ok: true, activated, expired, expireAt, trialEnd, serverNow: srvNow, status, trialDays: TRIAL_DAYS };
+
+  /* 高级版试用：客户端首次打开高级内容时上报 premiumSeen，服务端记起点（防清缓存重置） */
+  const PREMIUM_TRIAL_MS = 7 * 24 * 3600 * 1000;
+  let premiumFirst = (dev && typeof dev.premiumFirst === 'number') ? dev.premiumFirst : null;
+  if (body.premiumSeen && !premiumFirst) {
+    premiumFirst = srvNow;
+    try { await setDoc('devices', deviceId, Object.assign({}, dev || {}, { premiumFirst: srvNow })); } catch (e) {}
+  }
+  let premiumTrialEnd = null;
+  if (premiumFirst) premiumTrialEnd = premiumFirst + PREMIUM_TRIAL_MS;
+
+  return {
+    ok: true, activated, expired, expireAt, tier,
+    premiumTrialEnd, premiumActivated: activated && tier === 'premium',
+    trialEnd, serverNow: srvNow, status, trialDays: TRIAL_DAYS
+  };
 }
 
 async function handle(event) {

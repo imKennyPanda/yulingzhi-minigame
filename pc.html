@@ -333,6 +333,17 @@
   }
   .subj-sel:hover { background: #F3EDFC; border-color: #DCCBFA; }
 
+  /* ============ 高级版 ============ */
+  .prem-bar {
+    display: none; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 10px; background: linear-gradient(90deg,#FFF3E0,#FFE9F3); border: 2px dashed #F5B760;
+    font-size: 15px; font-weight: 800; color: #B0722A; cursor: pointer; user-select: none;
+  }
+  .en-top b.en-word { font-size: 40px; font-weight: 800; color: #4A90E2; letter-spacing: 2px; text-transform: uppercase; }
+  .en-top i.en-cn { font-style: normal; font-size: 36px; font-weight: 800; color: #4A3E5C; }
+  .en-top i.en-cn.is-hidden { display: none; }
+  .en-slot-seg { font-size: 30px; }
+
   /* ============ 拼音题图 ============ */
   .py-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
   .py-row { display: flex; gap: 18px; }
@@ -532,10 +543,13 @@
     <div class="topbar">
       <div class="brand">
         <div class="logo">数</div>
+        <select class="subj-sel" id="gradeSel" title="选择年级，难度跨玩法生效"></select>
         <select class="subj-sel" id="subjectSel">
           <option value="math">数学 · 分与合</option>
           <option value="pinyin">拼音 · 认字练习</option>
           <option value="pinyin-blend">拼音 · 拼写练习</option>
+          <option value="mul">数学 · 乘法练习</option>
+          <option value="en">英语 · 单词练习</option>
         </select>
       </div>
       <div class="tabs" id="tabs">
@@ -549,12 +563,20 @@
         <div class="diff" id="diff">
           <span data-max="5">5以内</span><span class="on" data-max="10">10以内</span><span data-max="15">15以内</span><span data-max="20">20以内</span>
         </div>
-        <div class="tool" id="btnChart" style="display:none">📖 拼音表</div>
+        <select class="subj-sel" id="tableSel" title="学习点读表">
+          <option value="">📖 学习表</option>
+          <option value="pinyin">拼音点读表</option>
+          <option value="abc">ABC 字母表</option>
+          <option value="ipa">ABC 音标表</option>
+          <option value="times">99 乘法表</option>
+        </select>
         <div class="tool" id="btnSound">🔊 音效</div>
         <div class="tool warn" id="btnReset">↻ 重赛</div>
         <div class="tool" id="btnRule">？ 规则</div>
       </div>
     </div>
+
+    <div class="prem-bar" id="premBar" style="display:none"></div>
 
     <div class="field">
       <div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
@@ -662,6 +684,39 @@
   </div>
 </div>
 
+<!-- 高级版 99 元/年 · 试用到期或点击锁定项时弹出 -->
+<div class="pay-mask" id="premMask" aria-hidden="true">
+  <div class="pay-card" role="dialog" aria-modal="true" aria-labelledby="premTitle">
+    <div class="pay-badge">⭐</div>
+    <div class="pay-title" id="premTitle">高级版试用已结束</div>
+    <div class="pay-sub">升级 <b>99 元 / 年</b>，解锁全部内容</div>
+    <div class="pay-hint" style="margin-bottom:6px">含基础版全部玩法，另加：乘法练习 · 英语单词 · 字母表 · 音标表 · 99 乘法表</div>
+    <div class="pay-qr-box no-img" id="premQrBox">
+      <img class="pay-qr" id="premQr" alt="高级版微信收款码">
+      <div class="pay-qr-ph" id="premQrPh">收款码加载中…</div>
+    </div>
+    <div class="pay-hint">微信扫码付款（备注手机号，如无法备注请直接加客服微信）</div>
+    <button type="button" class="pay-btn" id="premPaid">我已付款，查看收码说明</button>
+    <div class="pay-contact" id="premContact" hidden>
+      <div class="pay-ways-title">付款后领取激活码：</div>
+      <ol class="pay-ways">
+        <li>添加客服微信 <b id="premWxId">—</b>，发送手机号领取高级版激活码</li>
+        <li>微信付款时备注手机号（如无法备注，请用方式 1）</li>
+      </ol>
+      <button type="button" class="pay-mini" id="premCopyWx">复制客服微信</button>
+    </div>
+    <div class="pay-line"><span>已有高级版激活码</span></div>
+    <div class="pay-code-row">
+      <input class="pay-input" id="premCodeInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX">
+      <button type="button" class="pay-btn pay-btn-sm" id="premActivate">激活</button>
+    </div>
+    <div class="pay-msg" id="premMsg"></div>
+    <div class="pay-foot">高级版有效期 1 年 · 续费不缩水 · 激活码请勿外传</div>
+    <div class="pay-preview" id="premClose" style="cursor:pointer">稍后再说</div>
+  </div>
+</div>
+
+<script src="data-premium.js"></script>
 <script>
 /* ---------------- 缩放自适应 ---------------- */
 const board = document.getElementById('board');
@@ -766,7 +821,28 @@ const CHALLENGE_SEC = 120;
 const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
 /* ---------------- 学习分类 ---------------- */
-let SUBJECT = 'math';            // math 数学分与合 | pinyin 拼音练习
+let SUBJECT = 'math';            // math 数学分与合 | pinyin 拼音练习 | mul 乘法 | en 英语单词
+
+/* ---------------- 年级选择（跨玩法生效） ----------------
+   分与合范围、乘法口诀范围、英语词库年级、拼音字库难度都跟着年级走。 */
+const GRADES = [
+  { id: 'n1', name: '幼儿小班', maxN: 5,  mulMax: 0, enG: [0, 0],  pyMax: 2,  diff: [5] },
+  { id: 'n2', name: '幼儿中班', maxN: 10, mulMax: 0, enG: [0, 1],  pyMax: 3,  diff: [5, 10] },
+  { id: 'n3', name: '幼儿大班', maxN: 10, mulMax: 0, enG: [0, 1],  pyMax: 4,  diff: [5, 10] },
+  { id: 'g1', name: '小学1年级', maxN: 20, mulMax: 5, enG: [0, 2],  pyMax: 99, diff: [5, 10, 15, 20] },
+  { id: 'g2', name: '小学2年级', maxN: 50, mulMax: 9, enG: [1, 3],  pyMax: 99, diff: [10, 20, 50] },
+  { id: 'g3', name: '小学3年级', maxN: 100, mulMax: 9, enG: [2, 4], pyMax: 99, diff: [20, 50, 100] },
+  { id: 'g4', name: '小学4年级', maxN: 100, mulMax: 9, enG: [3, 5], pyMax: 99, diff: [50, 100] },
+  { id: 'g5', name: '小学5年级', maxN: 100, mulMax: 9, enG: [4, 6], pyMax: 99, diff: [50, 100] },
+  { id: 'g6', name: '小学6年级', maxN: 100, mulMax: 9, enG: [5, 6], pyMax: 99, diff: [50, 100] }
+];
+let GR = GRADES[3];                    // 默认小学 1 年级
+const GRADE_KEY = 'ylz.grade.v1';
+try {
+  const g = GRADES.find(x => x.id === localStorage.getItem(GRADE_KEY));
+  if (g) GR = g;
+} catch (e) {}
+MAXN = GR.maxN;
 
 /* ---------------- 拼音数据 ---------------- */
 const SM_LIST = [                // [声母, 呼读音示例字（用于发声）]
@@ -1342,14 +1418,15 @@ document.addEventListener('visibilitychange', () => {
   // 回到页面时重新预热当前题目的录音，避免浏览器后台回收后点按钮要等加载
   try { GROUPS.forEach(g => { if (g && g.q) preloadQuestionAudio(g.q); }); } catch (e) {}
 });
-function speak(text, rate, onDone) {
+function speak(text, rate, onDone, lang) {
   if (!('speechSynthesis' in window) || !text) { if (onDone) onDone(); return; }
   try {
     speechSynthesis.cancel();
     if (speechSynthesis.paused) speechSynthesis.resume();
     const u = new SpeechSynthesisUtterance(String(text));
-    u.lang = 'zh-CN';
-    if (zhVoice) u.voice = zhVoice;
+    u.lang = lang || 'zh-CN';
+    if (lang && /en/i.test(lang)) { if (enVoice) u.voice = enVoice; }
+    else if (zhVoice) u.voice = zhVoice;
     u.rate = rate || 0.65;               // 放慢一点，单字发音更完整
     let done = false;
     const finish = () => { if (done) return; done = true; if (onDone) onDone(); };
@@ -1357,6 +1434,23 @@ function speak(text, rate, onDone) {
     u.onerror = finish;
     speechSynthesis.speak(u);
   } catch (e) { if (onDone) onDone(); }
+}
+/* 英文朗读（高级版 · 英语单词练习）：en-US 语音，没有英文声音时退回默认音 */
+let enVoice = null;
+function pickEnVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices();
+  enVoice = vs.find(v => /en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+if ('speechSynthesis' in window) { pickEnVoice(); speechSynthesis.onvoiceschanged = pickEnVoice; }
+const speakEn = (text, rate, onDone) => speak(text, rate || 0.85, onDone, 'en-US');
+/* 高级版 · 乘法口诀朗读（中文 TTS） */
+const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘 ${b} 等于几` : `${a} 乘 ${b} 等于 ${ans}`, 0.8, onDone);
+/* 出新题时自动朗读：乘法读算式、英语读单词（浏览器拦截时用户点题卡可再听） */
+function speakNewQuestion(q) {
+  if (!q) return;
+  if (q.kind === 'mul') speakMul(q.parts[0], q.parts[1]);
+  else if (q.kind === 'en') speakEn(q.w);
 }
 /* ---------------- 拼音标准录音（本地 mp3，失败时回退到系统语音合成） ---------------- */
 const YM_AUDIO_NAME = { 'ü': 'v', 'üe': 've', 'ün': 'vn', 'üan': 'van' };   // 音频文件名用 v 表示 ü
@@ -1567,7 +1661,13 @@ function pinyinPool(progress) {
   // 闯关模式用随机台阶；练习模式保持每前进一格平缓扩大。
   const step = MODE === 'challenge' ? PY_DIFF_LADDER[p] : p;
   const max = Math.ceil(CHARS.length * (0.55 + 0.45 * step / (STEPS - 1)));
-  return CHARS.slice(0, Math.max(1, max));
+  let pool = CHARS.slice(0, Math.max(1, max));
+  // 幼儿班只出简单拼音（按年级限制音节长度，如小班只出「声母+单韵母」ba/ma 这类）
+  if (GR.pyMax < 99) {
+    const simple = pool.filter(x => (pinyinBase(x.p) || '').length <= GR.pyMax);
+    if (simple.length >= 6) pool = simple;
+  }
+  return pool;
 }
 /* 拼音出题去重：本轮已经出过的字不再出；上一轮、上上轮出过的字尽量避开，
    保证每一轮、每个小组（角色）出的字都不重复，连续几轮也尽量不撞字。 */
@@ -1598,6 +1698,8 @@ function newQuestion(progress = STEPS - 1) {
     const t = pickPinyinTarget(progress);
     return MODE === 'pyblend' ? newPinyinBlendQuestion(progress, t) : newPinyinQuestion(progress, t);
   }
+  if (SUBJECT === 'mul') return newMulQuestion();
+  if (SUBJECT === 'en') return newEnQuestion();
   const flip = Math.random() < 0.5;           // false=上合下分(总数在上) true=上分下合(部分在上)
   if (Math.random() < 0.5) {                 // 知总数求部分
     const t = rnd(2, MAXN);
@@ -1669,7 +1771,40 @@ function newPinyinBlendQuestion(progress = STEPS - 1, target = null) {
 function questionKey(q) {
   if (q.kind === 'py') return `py|${q.char}`;
   if (q.kind === 'pyblend') return `pyb|${q.char}`;
+  if (q.kind === 'mul') return `mul|${q.parts[0]}|${q.parts[1]}`;
+  if (q.kind === 'en') return `en|${q.w}`;
   return `${q.top}|${q.parts[0]}|${q.parts[1]}|${q.flip ? 1 : 0}`;
+}
+/* 高级版 · 乘法：按年级限定口诀范围（乘数/被乘数都在范围内） */
+function mulTopLimit() { return GR.mulMax || 5; }   // 幼儿班选了乘法也给 1~5
+function newMulQuestion() {
+  const top = mulTopLimit();
+  const a = rnd(1, top), b = rnd(1, top);
+  return { kind: 'mul', top: null, parts: [a, b], answer: a * b, flip: false };
+}
+/* 高级版 · 英语单词：听发音 + 看单词，把读音拆成 2~3 段音标拼回去 */
+function enWordPool() {
+  const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.enWords) || [];
+  const gs = GR.enG;                                  // [min, max] 年级区间
+  let pool = D.filter(x => x.g >= gs[0] && x.g <= gs[1]);
+  if (pool.length < 8) pool = D;                      // 兜底：词太少时用全库
+  return pool;
+}
+function newEnQuestion() {
+  const pool = enWordPool();
+  const t = pool[rnd(0, pool.length - 1)];
+  // 干扰段：从同词库其它单词的音段里抽，避免与正确段重复
+  const wrong = [];
+  const segSet = new Set(t.seg);
+  for (let i = 0; i < 200 && wrong.length < 3; i++) {
+    const o = pool[rnd(0, pool.length - 1)];
+    const s = o.seg[rnd(0, o.seg.length - 1)];
+    if (!segSet.has(s) && !wrong.includes(s)) wrong.push(s);
+  }
+  const opts = [...t.seg, ...wrong];
+  for (let i = opts.length - 1; i > 0; i--) { const j = rnd(0, i); [opts[i], opts[j]] = [opts[j], opts[i]]; }
+  return { kind: 'en', top: null, parts: [null, null], flip: false,
+           w: t.w, cn: t.cn, ipa: t.ipa, seg: t.seg, opts, answer: t.w };
 }
 function uniqueQuestion(progress = STEPS - 1) {
   let fallback = null;
@@ -1847,7 +1982,47 @@ function diagram(q, pick, pickSm, pickYm, pickTone, showPy, pickWhole) {
 }
 /* 分与合翻转按钮：显示当前状态（分/合），图标与记分卡右对齐 */
 const FLIP_ICON = `<svg viewBox="0 0 1024 1024" aria-hidden="true"><path fill="currentColor" d="M970.374065 454.543641H51.072319c-28.089776 0-51.072319 22.982544-51.072319 51.072319v2.553616c0 28.089776 22.982544 51.072319 51.072319 51.072319h919.301746c28.089776 0 51.072319-22.982544 51.072319-51.072319v-2.553616c0-28.089776-22.982544-51.072319-51.072319-51.072319zM303.880299 326.862843l199.182045-201.735661 181.306733 183.860349c20.428928 20.428928 51.072319 20.428928 71.501247 0 20.428928-20.428928 20.428928-53.625935 0-74.054863L538.812968 15.321696c-20.428928-20.428928-51.072319-20.428928-71.501247 0-5.107232 5.107232-5.107232 7.660848-7.660848 12.76808-2.553616 2.553616-7.660848 5.107232-10.214464 7.660847L232.379052 255.361596c-20.428928 20.428928-20.428928 53.625935 0 74.054863 20.428928 17.875312 51.072319 17.875312 71.501247-2.553616zM702.244389 720.119701l-183.860349 181.306733-201.735661-199.182045c-20.428928-20.428928-53.625935-20.428928-74.054863 0-20.428928 20.428928-20.428928 51.072319 0 51.072319l219.610973 217.057357c2.553616 2.553616 7.660848 5.107232 10.214464 7.660847 2.553616 2.553616 5.107232 7.660848 7.660847 10.214464 20.428928 20.428928 53.625935 20.428928 74.054863 0l219.610973-217.057356c20.428928-20.428928 20.428928-51.072319 0-71.501247-17.875312-20.428928-51.072319-20.428928-71.501247 0z"/></svg>`;
+/* 高级版 · 乘法题图：a × b = ? */
+function mulDiagram(q, pick) {
+  const num = (x, y, val, isBlank) => {
+    const cls = isBlank ? (pick !== null ? 'numbox filled' : 'numbox blank') : 'numbox';
+    const txt = isBlank
+      ? (pick !== null ? `<text class="ntext ans" x="${x + 40}" y="${y + 38}" text-anchor="middle">${pick}</text>`
+                       : `<text class="ntext q" x="${x + 40}" y="${y + 38}" text-anchor="middle">?</text>`)
+      : `<text class="ntext" x="${x + 40}" y="${y + 38}" text-anchor="middle">${val}</text>`;
+    return `<rect class="${cls}" x="${x}" y="${y}" width="80" height="52" rx="14"/>${txt}`;
+  };
+  return `<svg viewBox="0 0 300 176">
+    ${num(40, 12, q.parts[0], false)}
+    <text class="ntext" x="150" y="52" text-anchor="middle" style="font-size:30px;font-weight:800;fill:#FF6FAE">×</text>
+    ${num(180, 12, q.parts[1], false)}
+    <text class="ntext" x="150" y="148" text-anchor="middle" style="font-size:26px;font-weight:800;fill:#B9A8CC">=</text>
+    ${num(110, 108, q.answer, true)}
+  </svg>`;
+}
+/* 高级版 · 英语题图：上=单词（默认藏中文，点小眼睛显示）+ 点读；下=音标段槽位 */
+function enDiagram(q, picks, showCn) {
+  const eyeSvg = show => show
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c7 0 10.5 6 10.5 6a17.6 17.6 0 0 1-3.3 4.1"/><path d="M6.6 6.6A17.9 17.9 0 0 0 1.5 12S5 18 12 18c1.4 0 2.7-.3 3.9-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const slot = (val, i) =>
+    `<div class="pyb-slot${val ? ' filled' : ''}"><b class="en-slot-seg">${val || '?'}</b><span>音标段 ${i + 1}</span></div>`;
+  return `<div class="pyb-wrap">
+    <div class="pyb-top en-top" data-en-say="${q.w}">
+      <b class="en-word">${q.w}</b><i class="en-cn${showCn ? '' : ' is-hidden'}">${q.cn}</i>
+      <span class="pyb-side">
+        <span>🔊 点击听</span>
+        <span class="pyb-eye" role="button" tabindex="0" title="${showCn ? '隐藏中文' : '显示中文'}" aria-label="显示或隐藏中文">${eyeSvg(showCn)}</span>
+      </span>
+    </div>
+    <div class="pyb-row">
+      ${q.seg.map((s, i) => slot(picks[i] || '', i)).join('')}
+    </div>
+  </div>`;
+}
 function diagramHTML(g) {
+  if (g.q.kind === 'mul') return `<div class="diagram-wrap">${mulDiagram(g.q, g.pick)}</div>`;
+  if (g.q.kind === 'en') return `<div class="diagram-wrap">${enDiagram(g.q, g.enPicks || [], g.showCn)}</div>`;
   const svg = diagram(g.q, g.pick, g.pickSm, g.pickYm, g.pickTone, g.showPy, g.pickWhole);
   if (g.q.kind) return svg;
   const dis = (g.done || g.lock || finished) ? ' disabled' : '';
@@ -1891,7 +2066,15 @@ GROUPS.forEach(g => {
       return;
     }
     const eye = e.target.closest('.pyb-eye');
-    if (eye) { g.showPy = !g.showPy; render(g); return; }   // 小眼睛：显示/隐藏拼音
+    if (eye) {
+      if (g.q.kind === 'en') { g.showCn = !g.showCn; render(g); return; }   // 英语：显示/隐藏中文
+      g.showPy = !g.showPy; render(g); return;                              // 拼音：显示/隐藏拼音
+    }
+    if (g.q.kind === 'en') {
+      const w = e.target.closest('[data-en-say]');
+      if (w) { speakEn(g.q.w, 0.85); return; }                              // 点单词听发音
+      return;
+    }
     const t = e.target.closest('[data-say]');
     if (!t) return;
     // 认字练习：声母、韵母、声调也播放标准录音，和拼音表/拼写练习一致
@@ -2070,6 +2253,39 @@ function renderPad(g) {
     });
     return;
   }
+  if (g.q.kind === 'mul') {                       // 高级版 · 乘法数字键盘
+    const top = mulTopLimit();
+    const padMax = top * top;
+    const compact = padMax > 10;
+    g.padEl.classList.toggle('compact', compact);
+    g.padEl.style.gridTemplateColumns = compact ? 'repeat(7, 1fr)' : 'repeat(5, 1fr)';
+    for (let n = 1; n <= padMax; n++) {
+      const k = document.createElement('div');
+      k.className = 'key' + (g.pick === n ? ' sel' : '');
+      k.textContent = n;
+      k.onclick = () => { if (g.done || g.lock || finished) return; g.pick = n; render(g); };
+      g.padEl.appendChild(k);
+    }
+    return;
+  }
+  if (g.q.kind === 'en') {                        // 高级版 · 英语：按顺序点音段填槽
+    g.padEl.innerHTML = `<div class="pad-cap">按顺序点音标段 · 拼出单词读音</div><div class="pad-grid" style="grid-template-columns:repeat(4,1fr)"></div>`;
+    const grid = g.padEl.querySelector('.pad-grid');
+    g.q.opts.forEach(v => {
+      const k = document.createElement('div');
+      k.className = 'key charKey en-slot-seg';
+      k.textContent = v;
+      k.onclick = () => {
+        if (g.done || g.lock || finished) return;
+        if (!g.enPicks) g.enPicks = [];
+        if (g.enPicks.length >= g.q.seg.length) return;
+        g.enPicks.push(v);
+        render(g);
+      };
+      grid.appendChild(k);
+    });
+    return;
+  }
   let padMax = MAXN;
   if (MODE === 'custom' && customQ) {
     const nums = [g.q.top, g.q.answer, ...(g.q.parts || [])].filter(x => x !== null && x !== undefined && !isNaN(x));
@@ -2091,7 +2307,9 @@ function render(g) {
   renderPad(g);
   g.okEl.disabled = g.q.kind === 'pyblend'
     ? (g.q.whole ? !g.pickWhole : !(g.pickSm && g.pickYm && g.pickTone))
-    : g.pick === null;
+    : g.q.kind === 'en'
+      ? !(g.enPicks && g.enPicks.length === g.q.seg.length)
+      : g.pick === null;
   if (g.helpEl) {
     const py = !!g.q.kind;
     g.helpEl.style.display = py ? 'none' : '';
@@ -2120,9 +2338,11 @@ function resetGroup(g) {
   g.seq = (g.seq || 0) + 1;              // 作废上一题还没执行的“延迟出下一题”
   g.lock = false;
   g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; g.showPy = false;
+  g.enPicks = []; g.showCn = false;
   g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion(g.progress);
   preloadQuestionAudio(g.q);
   g.pick = null; render(g);
+  speakNewQuestion(g.q);                 // 乘法/英语：出题自动朗读
 }
 
 /* ---------------- 提交判定 ---------------- */
@@ -2132,6 +2352,9 @@ function submit(g) {
   if (g.q.kind === 'pyblend') {
     if (g.q.whole ? !g.pickWhole : (!g.pickSm || !g.pickYm || !g.pickTone)) return;
   }
+  else if (g.q.kind === 'en') {
+    if (!g.enPicks || g.enPicks.length !== g.q.seg.length) return;
+  }
   else if (g.pick === null) return;
   g.lock = true;
   g.okEl.disabled = true;
@@ -2139,7 +2362,9 @@ function submit(g) {
     ? (g.q.whole
         ? !!(g.pickWhole && g.pickWhole.p === g.q.pinyin)
         : (g.pickSm === g.q.sm && g.pickYm === g.q.ym && g.pickTone === g.q.tone))
-    : (g.pick === g.q.answer);
+    : g.q.kind === 'en'
+      ? (g.enPicks.length === g.q.seg.length && g.q.seg.every((s, i) => g.enPicks[i] === s))
+      : (g.pick === g.q.answer);
   if (ok) {
     beep(true);
     const seq = g.seq;
@@ -2176,6 +2401,24 @@ function submit(g) {
       };
       playCharSound(g.q.pinyin, g.q.char, once);   // 拼音答对：点读该字巩固发音
       setTimeout(once, 3500);                 // 兜底：音频异常时也不卡住
+    } else if (g.q.kind === 'mul') {
+      // 答对后朗读完整口诀「3 乘 5 等于 15」，强化记忆
+      let fired = false;
+      const once = () => {
+        if (fired || seq !== g.seq) return; fired = true;
+        later(advance, isFinal ? 900 : 1000);
+      };
+      speakMul(g.q.parts[0], g.q.parts[1], g.q.answer, once);
+      setTimeout(once, 4000);                 // 兜底：TTS 异常时也不卡住
+    } else if (g.q.kind === 'en') {
+      // 答对后整词再读一遍
+      let fired = false;
+      const once = () => {
+        if (fired || seq !== g.seq) return; fired = true;
+        later(advance, isFinal ? 900 : 1000);
+      };
+      speakEn(g.q.w, 0.85, once);
+      setTimeout(once, 4000);
     } else {
       later(advance, isFinal ? 900 : 700);
     }
@@ -2196,7 +2439,9 @@ function submit(g) {
     const timer = setTimeout(() => {
       g.el.classList.remove('wrong');
       g.lock = false;                                   // 答错后解锁，否则这组再也答不了题
-      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; render(g);
+      g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null;
+      g.enPicks = []; g.showCn = false;
+      render(g);
     }, 620);
     qTimers.set(g, timer);
   }
@@ -2237,6 +2482,8 @@ function bannerFor(m) {
     if (m === 'pyblend')  return '🧩 拼音 · 拼写练习 · 听音选拼 🏁';
     return m === 'challenge' ? '⏱ 限时听音辨字 · 答错退一格 🏁' : '🔊 听音辨字 · 前进一格 🏁';
   }
+  if (SUBJECT === 'mul')  return m === 'challenge' ? '⏱ 限时乘法 · 答错退一格 🏁' : '✖️ 乘法练习 · 听算式选答案 🏁';
+  if (SUBJECT === 'en')   return m === 'challenge' ? '⏱ 限时单词 · 答错退一格 🏁' : '🔤 听发音 · 按顺序选音标段 🏁';
   if (m === 'challenge') return '⏱ 限时挑战 · 答错退一格 🏁';
   if (m === 'custom')    return '✏️ 自定义出题 · 教师定题 🏁';
   return '🏃 答对一题 · 前进一格 🏁';
@@ -2631,7 +2878,47 @@ function buildChart() {
   document.getElementById('chartBody').innerHTML = html;
 }
 buildChart();
-document.getElementById('btnChart').onclick = () => maskChart.classList.add('show');
+
+/* ---------------- 高级版 · 三个新点读表 ---------------- */
+const PREM_TABLES = new Set(['abc', 'ipa', 'times']);
+function tableCard(big, small, attrs) {
+  return `<div class="c-card"${attrs}><b>${big}</b><span>${small}</span></div>`;
+}
+function buildAbcTable() {
+  const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.alphabet) || [];
+  return `<h4>ABC 字母表（26 个 · 点击听字母发音）</h4><div class="c-grid">`
+    + D.map(x => tableCard(x.L, x.word, ` data-say="${x.L}" data-kind="en"`)).join('') + '</div>';
+}
+function buildIpaTable() {
+  const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.phonetics48) || [];
+  return `<h4>ABC 音标表（${D.length} 个国际音标 · 点击听例词）</h4><div class="c-grid">`
+    + D.map(x => tableCard(x.p, `${x.ex} ${x.cn}`, ` data-say="${x.ex}" data-kind="en"`)).join('') + '</div>';
+}
+function buildTimesTable() {
+  let html = '';
+  for (let a = 1; a <= 9; a++) {
+    html += `<h4>${a} 的乘法口诀</h4><div class="c-grid">`
+      + Array.from({ length: 9 }, (_, i) => {
+          const b = i + 1;
+          return tableCard(`${a}×${b}`, `= ${a * b}`, ` data-say="${a}乘${b}等于${a * b}" data-kind="zh"`);
+        }).join('') + '</div>';
+  }
+  return html;
+}
+const tableSel = document.getElementById('tableSel');
+tableSel.onchange = () => {
+  const v = tableSel.value;
+  tableSel.value = '';                            // 选完复位，便于重复打开同一张表
+  if (!v) return;
+  if (PREM_TABLES.has(v) && !premAllowUse()) { openPremium('locked'); return; }
+  if (PREM_TABLES.has(v)) markPremSeen();
+  const body = document.getElementById('chartBody');
+  if (v === 'pinyin') { buildChart(); }
+  else if (v === 'abc') body.innerHTML = buildAbcTable();
+  else if (v === 'ipa') body.innerHTML = buildIpaTable();
+  else if (v === 'times') body.innerHTML = buildTimesTable();
+  maskChart.classList.add('show');
+};
 document.getElementById('chartClose').onclick = () => maskChart.classList.remove('show');
 document.getElementById('chartFs').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
@@ -2641,6 +2928,8 @@ maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
   if (!t) return;
   if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
+  else if (t.dataset.kind === 'en') speakEn(t.dataset.say, 0.75);
+  else if (t.dataset.kind === 'zh') speak(t.dataset.say, 0.8);
   else if (t.dataset.kind) playPinyinSound(t.dataset.kind, t.dataset.key, t.dataset.say);
   else speak(t.dataset.say);
 });
@@ -2654,14 +2943,21 @@ function syncSubjSel() {
 function setSubject(s) {
   const blend = s === 'pinyin-blend';
   if (blend) s = 'pinyin';
+  // 高级版玩法门禁：未解锁先弹高级版弹窗，选择框回退到当前科目
+  if ((s === 'mul' || s === 'en') && !premAllowUse()) {
+    subjectSel.value = (SUBJECT === 'pinyin' && MODE === 'pyblend') ? 'pinyin-blend' : SUBJECT;
+    openPremium('locked');
+    return;
+  }
+  if (s === 'mul' || s === 'en') markPremSeen();
   SUBJECT = s;
   customQ = null;
-  document.getElementById('diff').style.display = s === 'pinyin' ? 'none' : 'flex';
-  document.querySelector('.tab[data-mode="custom"]').style.display = s === 'pinyin' ? 'none' : '';
-  document.getElementById('btnChart').style.display = s === 'pinyin' ? 'flex' : 'none';
+  document.getElementById('diff').style.display = s === 'math' ? 'flex' : 'none';
+  document.querySelector('.tab[data-mode="custom"]').style.display = s === 'math' ? '' : 'none';
   if (blend)                                                        MODE = 'pyblend';
   else if (s === 'pinyin' && (MODE === 'custom' || MODE === 'pyblend')) MODE = 'practice';
   else if (s === 'math' && MODE === 'pyblend')                      MODE = 'practice';
+  if (s !== 'math' && MODE === 'custom') MODE = 'practice';
   syncTabs();
   bannerEl.innerHTML = bannerFor(MODE);
   syncSubjSel();
@@ -2752,10 +3048,14 @@ function applyServerState(r) {
     trialEnd: typeof r.trialEnd === 'number' ? r.trialEnd : null,
     serverNow: typeof r.serverNow === 'number' ? r.serverNow : null,
     status: r.status || '',
+    tier: r.tier || 'basic',
+    premiumActivated: !!r.premiumActivated || (r.activated && r.tier === 'premium'),
+    premiumTrialEnd: typeof r.premiumTrialEnd === 'number' ? r.premiumTrialEnd : null,
     checkedAt: Date.now()
   };
   if (serverState.serverNow !== null) clockOffset = serverState.serverNow - Date.now();
   saveServerState();
+  refreshPremiumUI();
   return true;
 }
 async function refreshServerState(isVisit) {
@@ -2946,7 +3246,7 @@ async function activatePay() {
       msg.textContent = (r && r.msg) || '网络异常，请稍后重试';
       return;
     }
-    applyServerState({ ok: true, activated: true, expired: false, expireAt: r.expireAt, serverNow: r.serverNow, status: 'active' });
+    applyServerState({ ok: true, activated: true, expired: false, expireAt: r.expireAt, tier: r.tier, serverNow: r.serverNow, status: 'active' });
     trial = trial || {};
     trial.code = n;
     trial.tampered = false;
@@ -3040,6 +3340,211 @@ function bootTrial() {
   });
 }
 bootTrial();
+
+/* ================= 高级版（99 元/年 · 7 天试用） =================
+   高级码包含基础版全部权益；高级内容 7 天试用，从首次点开高级内容起算。
+   试用起点本地三重存储（localStorage + Cookie），并上报云端 devices.premiumFirst 防清缓存。 */
+const PREM_CFG = {
+  days: 7,
+  price: '99',
+  qrSrc: 'img/premium-qr.jpg',    // 高级版个微引流二维码
+  wxId: 'julie686817'             // 客服微信（与基础版相同）
+};
+const PREM_TRIAL_MS = PREM_CFG.days * 24 * 60 * 60 * 1000;
+const PREM_KEY = 'ylz.prem.v1';
+const PREM_CK = 'ylz_prem';
+const premMask = document.getElementById('premMask');
+const prem$ = id => document.getElementById(id);
+let prem = null;
+let premOpen = false;
+
+function premParse(raw) {
+  try {
+    const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (o && typeof o.first === 'number' && isFinite(o.first) && o.first > 0) return o;
+  } catch (e) {}
+  return null;
+}
+function premLsGet() { try { return localStorage.getItem(PREM_KEY); } catch (e) { return null; } }
+function premCkGet() {
+  try {
+    const m = document.cookie.match(/(?:^|; )ylz_prem=([^;]*)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (e) { return null; }
+}
+function premSave(withIdb) {
+  if (!prem) return;
+  const raw = JSON.stringify(prem);
+  try { localStorage.setItem(PREM_KEY, raw); } catch (e) {}
+  try { document.cookie = PREM_CK + '=' + encodeURIComponent(raw) + '; Max-Age=' + (365 * 24 * 3600) + '; Path=/; SameSite=Lax'; } catch (e) {}
+}
+function premLoad() {
+  const a = premParse(premLsGet()), b = premParse(premCkGet());
+  let first = 0;
+  [a, b].forEach(s => { if (s && (!first || s.first < first)) first = s.first; });
+  prem = { first: first || 0, warned: (a && a.warned) || (b && b.warned) || 0 };
+}
+premLoad();
+
+/* 高级版是否可用：已激活 premium 码 / 试用期内 / 演示模式 */
+function premUnlocked() {
+  if (demoPay) return true;
+  if (serverState) {
+    if (serverState.premiumActivated) return true;
+    if (serverState.premiumTrialEnd) return nowT() < serverState.premiumTrialEnd;
+  }
+  if (prem && prem.first) return nowT() - prem.first < PREM_TRIAL_MS;
+  return false;
+}
+const premAllowUse = premUnlocked;
+
+/* 首次使用高级内容：记录起点并上报云端 */
+let premSeenReported = false;
+function markPremSeen() {
+  if (!prem.first) { prem.first = nowT(); premSave(true); }
+  if (!premSeenReported) {
+    premSeenReported = true;
+    payApi('verify', { premiumSeen: 1 }).then(applyServerState).catch(() => {});
+  }
+  refreshPremiumUI();
+}
+
+/* 高级版剩余天数 / 到期日（用于提示条与弹窗文案） */
+function premDaysLeft() {
+  if (serverState && serverState.premiumActivated) return Infinity;
+  const end = (serverState && serverState.premiumTrialEnd) || (prem && prem.first ? prem.first + PREM_TRIAL_MS : null);
+  if (!end) return null;
+  return Math.max(0, Math.ceil((end - nowT()) / (24 * 60 * 60 * 1000)));
+}
+/* 顶栏下的高级版提示条 */
+function refreshPremiumUI() {
+  const bar = prem$('premBar');
+  const subjectSel = document.getElementById('subjectSel');
+  // 科目下拉的锁定标记
+  ['mul', 'en'].forEach(v => {
+    const o = subjectSel.querySelector(`option[value="${v}"]`);
+    if (o) o.textContent = (premUnlocked() ? '' : '🔒 ') + (v === 'mul' ? '数学 · 乘法练习' : '英语 · 单词练习');
+  });
+  // 提示条：试用中显示剩余天数；已付费显示到期日
+  if (premUnlocked() && !demoPay) {
+    if (serverState && serverState.premiumActivated && serverState.expireAt) {
+      bar.textContent = `⭐ 高级版已开通 · ${serverState.expireAt} 到期`;
+      bar.style.display = 'flex';
+    } else {
+      const d = premDaysLeft();
+      if (d !== null) {
+        bar.textContent = d > 0 ? `⭐ 高级版试用中 · 还剩 ${d} 天，升级 99 元/年解锁全部内容` : '⭐ 高级版试用已结束';
+        bar.style.display = 'flex';
+      }
+    }
+    bar.onclick = () => openPremium(serverState && serverState.premiumActivated ? 'active' : premDaysLeft() > 0 ? 'trial' : 'expired');
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+/* 高级版弹窗 */
+function openPremium(reason) {
+  if (premOpen) return;
+  premOpen = true;
+  prem$('premWxId').textContent = PREM_CFG.wxId;
+  prem$('premTitle').textContent =
+    reason === 'expired' ? '高级版试用已结束'
+      : reason === 'trial' ? '升级高级版 · 解锁全部内容'
+      : reason === 'active' ? '高级版 · 续费 / 管理'
+      : '这个内容属于高级版';
+  prem$('premMsg').textContent = '';
+  prem$('premContact').hidden = true;
+  premMask.classList.add('show');
+  premMask.setAttribute('aria-hidden', 'false');
+}
+function closePremium() {
+  premOpen = false;
+  premMask.classList.remove('show');
+  premMask.setAttribute('aria-hidden', 'true');
+}
+function initPremiumBox() {
+  const qr = prem$('premQr'), box = prem$('premQrBox');
+  qr.onload = () => box.classList.remove('no-img');
+  qr.onerror = () => {
+    box.classList.add('no-img');
+    prem$('premQrPh').innerHTML = '收款码未找到<br><small>请把图片放到 img/premium-qr.jpg</small>';
+  };
+  qr.src = PREM_CFG.qrSrc;
+  prem$('premCopyWx').onclick = () => copyText(PREM_CFG.wxId, prem$('premCopyWx'));
+  prem$('premPaid').onclick = () => {
+    const c = prem$('premContact');
+    c.hidden = !c.hidden;
+    if (!c.hidden) c.scrollIntoView({ block: 'nearest' });
+  };
+  prem$('premClose').onclick = closePremium;
+  premMask.addEventListener('click', e => { if (e.target === premMask) closePremium(); });
+
+  /* 高级版激活：与基础版同一接口，云端按码的档位返回 tier */
+  const activate = async () => {
+    const input = prem$('premCodeInput'), msg = prem$('premMsg'), btn = prem$('premActivate');
+    const n = normCode(input.value);
+    if (!n) { msg.textContent = '请输入激活码'; return; }
+    btn.disabled = true; btn.textContent = '验证中…';
+    msg.textContent = '正在验证激活码…';
+    try {
+      const r = await payApi('activate', { code: n });
+      if (!r || !r.ok) { msg.textContent = (r && r.msg) || '网络异常，请稍后重试'; return; }
+      if (r.tier !== 'premium') {
+        msg.textContent = '这是基础版激活码（9.9 元），高级版需要 99 元/年的激活码，请联系客服微信升级';
+        return;
+      }
+      applyServerState({ ok: true, activated: true, expired: false, expireAt: r.expireAt, tier: 'premium', serverNow: r.serverNow, status: 'active' });
+      trial = trial || {};
+      trial.code = n;
+      trial.tampered = false;
+      saveTrial(true);
+      prem.first = 0; premSave(true);          // 已付费，清掉试用记录
+      msg.textContent = '高级版激活成功！';
+      input.value = '';
+      setTimeout(() => { closePremium(); try { resetAll(); } catch (e) {} }, 600);
+    } catch (e) {
+      msg.textContent = '网络异常，请稍后重试';
+    } finally {
+      btn.disabled = false; btn.textContent = '激活';
+    }
+  };
+  prem$('premActivate').onclick = activate;
+  prem$('premCodeInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); activate(); }
+  });
+}
+initPremiumBox();
+
+/* ================= 年级选择 ================= */
+const gradeSel = document.getElementById('gradeSel');
+const diffEl = document.getElementById('diff');
+function rebuildDiff() {
+  diffEl.innerHTML = GR.diff.map(n =>
+    `<span data-max="${n}"${n === GR.maxN ? ' class="on"' : ''}>${n}以内</span>`).join('');
+  MAXN = GR.maxN;
+  diffEl.querySelectorAll('span').forEach(s => {
+    s.onclick = () => {
+      diffEl.querySelectorAll('span').forEach(x => x.classList.remove('on'));
+      s.classList.add('on'); MAXN = +s.dataset.max;
+      if (MODE === 'custom') customQ = null;
+      resetAll();
+      if (MODE === 'custom') openCustom();
+    };
+  });
+}
+gradeSel.innerHTML = GRADES.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+gradeSel.value = GR.id;
+gradeSel.onchange = () => {
+  const g = GRADES.find(x => x.id === gradeSel.value);
+  if (!g) return;
+  GR = g;
+  try { localStorage.setItem(GRADE_KEY, GR.id); } catch (e) {}
+  rebuildDiff();
+  resetAll();
+};
+rebuildDiff();
+refreshPremiumUI();
 </script>
 </body>
 </html>

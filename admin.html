@@ -30,6 +30,12 @@
       <label class="field"><span>有效期至</span>
         <input class="input" id="genExpire" type="date" value="2099-12-31">
       </label>
+      <label class="field"><span>档位</span>
+        <select class="input" id="genTier">
+          <option value="basic">基础版 9.9（现有玩法）</option>
+          <option value="premium">高级版 99/年（含基础+新玩法）</option>
+        </select>
+      </label>
       <label class="field"><span>备注（可选）</span>
         <input class="input" id="genNote" maxlength="100" placeholder="例如：第三批 · 抖音">
       </label>
@@ -137,6 +143,7 @@
     body.innerHTML = rows.map(function (it) {
       state.byId[it.id] = it;
       var st = statusOf(it);
+      var tierBadge = it.tier === 'premium' ? ' <span class="pill used" title="99 元高级版">高</span>' : '';
       var note = [it.note, it.batch].filter(Boolean).join(' · ');
       var devs = it.devices || [];
       var ops = '<button type="button" class="btn mini ghost" data-act="copy" data-id="' + A.esc(it.id) + '">复制</button>' +
@@ -153,7 +160,7 @@
             devs.length + ' / ' + (state.maxDevices || 3) + ' 台</button>'
         : '<span class="muted">—</span>';
       return '<tr>' +
-        '<td class="mono"><b>' + A.esc(it.code) + '</b></td>' +
+        '<td class="mono"><b>' + A.esc(it.code) + '</b>' + tierBadge + '</td>' +
         '<td><span class="pill ' + st.cls + '">' + st.text + '</span></td>' +
         '<td class="mono">' + A.esc(it.expireAt || '2099-12-31') + '</td>' +
         '<td>' + devCell + '</td>' +
@@ -238,7 +245,8 @@
     $('genHint').textContent = '正在生成…';
     A.call('gen', {
       count: count, expireAt: expire,
-      note: $('genNote').value.trim(), batch: $('genBatch').value.trim()
+      note: $('genNote').value.trim(), batch: $('genBatch').value.trim(),
+      tier: $('genTier').value === 'premium' ? 'premium' : 'basic'
     }).then(function (r) {
       if (!r.ok) throw new Error(r.msg || '生成失败');
       lastGen = r;

@@ -157,7 +157,7 @@ async function listCodes(p) {
       status: d.status, expireAt: d.expireAt,
       deviceId: d.deviceId || '', devices: boundDevices(d),
       usedAt: d.usedAt || null, createdAt: d.createdAt || null,
-      note: d.note || '', batch: d.batch || ''
+      note: d.note || '', batch: d.batch || '', tier: d.tier === 'premium' ? 'premium' : 'basic'
     }))
   };
 }
@@ -168,6 +168,7 @@ async function genCodes(p) {
   const expireAt = validDate(p.expireAt) ? p.expireAt : DEFAULT_EXPIRE;
   const note = String(p.note || '').slice(0, 100);
   const batch = String(p.batch || ('B' + new Date().toISOString().slice(0, 10).replace(/-/g, ''))).slice(0, 40);
+  const tier = p.tier === 'premium' ? 'premium' : 'basic';   // 档位：premium = 99 元高级版
   const made = [];
   let guard = 0;
   while (made.length < count && guard < count * 20) {
@@ -176,13 +177,13 @@ async function genCodes(p) {
     if (await getDoc('activation_codes', n)) continue;
     try {
       await db.collection('activation_codes').doc(n).set({
-        code: formatCode(n), status: 'unused', expireAt, note, batch,
+        code: formatCode(n), status: 'unused', expireAt, note, batch, tier,
         createdAt: Date.now(), deviceId: null, usedAt: null
       });
       made.push(formatCode(n));
     } catch (e) { /* 重试下一个 */ }
   }
-  return { ok: true, count: made.length, expireAt, batch, codes: made };
+  return { ok: true, count: made.length, expireAt, batch, tier, codes: made };
 }
 
 async function revokeCode(p) {
