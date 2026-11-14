@@ -142,6 +142,12 @@ node tools/cloudbase-admin.js revoke AB12-CD34
 # 修改某个码的备注（网页后台行内「备注」按钮等效）
 cloudbase fn invoke ylz-admin --params '{"action":"setnote","code":"AB12-CD34","note":"渠道备注"}'
 
+# 回填访问记录的 IP 归属地（省/市；region 缺失或为空的记录才会解析，可重复执行直至回完）
+# 加 reset:true 会先清空所有已有 region 再重新解析（用于修正旧乱码数据）
+cloudbase fn invoke ylz-admin --params '{"action":"backfillRegion","limit":30}'
+cloudbase fn invoke ylz-admin --params '{"action":"backfillRegion","reset":true,"limit":30}'
+# 注意：云函数入口会把 action 转小写，backfillRegion 大小写均可；解析失败结果不缓存，下次自动重试
+
 # 彻底删除一条记录（清理测试码/误导入）
 node tools/cloudbase-admin.js del AB12-CD34
 
