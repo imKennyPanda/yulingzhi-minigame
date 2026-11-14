@@ -477,9 +477,9 @@
       <option value="math">数学 · 分与合</option>
       <option value="pinyin">拼音 · 认字练习</option>
       <option value="pinyin-blend">拼音 · 拼写练习</option>
-      <option value="mul">数学 · 乘法练习</option>
-      <option value="en">英语 · 发音练习</option>
-      <option value="en-word">英语 · 单词练习</option>
+      <option value="mul">⭐ 数学 · 乘法练习</option>
+      <option value="en">⭐ 英语 · 发音练习</option>
+      <option value="en-word">⭐ 英语 · 单词练习</option>
     </select>
     <select class="subj-sel" id="tableSel" title="学习点读表">
       <option value="">📖 学习表</option>
@@ -1923,7 +1923,10 @@ GROUPS.forEach((g, i) => {
   chip.className = 'g-chip' + (i === 0 ? ' on' : '');
   chip.style.setProperty('--c', g.color);
   chip.innerHTML = `${g.no}号·${g.name}<small>0/10</small>`;
-  chip.onclick = () => { if (finished) return; closeHelp(); curGroup = i; syncStations(); preloadQuestionAudio(GROUPS[i].q); };
+  chip.onclick = () => {
+    if (finished) return; closeHelp(); curGroup = i; syncStations(); preloadQuestionAudio(GROUPS[i].q);
+    speakNewQuestion(GROUPS[i].q);       // 切到哪个小组就读哪个小组的题，保证听到的和看到的一致
+  };
   gSwitch.appendChild(chip);
   g.chipEl = chip;
 
@@ -2447,7 +2450,7 @@ function makeCustomQuestion() {
     flip: Math.random() < 0.5
   };
 }
-function resetGroup(g) {
+function resetGroup(g, silent) {
   closeHelpIf(g);
   g.seq = (g.seq || 0) + 1;              // 作废上一题还没执行的“延迟出下一题”
   g.lock = false;
@@ -2456,7 +2459,7 @@ function resetGroup(g) {
   g.q = (MODE === 'custom' && customQ) ? makeCustomQuestion() : uniqueQuestion(g.progress);
   preloadQuestionAudio(g.q);
   g.pick = null; render(g);
-  speakNewQuestion(g.q);                 // 乘法/英语：出题自动朗读
+  if (!silent) speakNewQuestion(g.q);    // 乘法/英语：只朗读当前可见小组的题，避免几个小组同时出声、听到的题对不上
 }
 
 /* ---------------- 提交判定 ---------------- */
@@ -2673,7 +2676,7 @@ document.getElementById('cqApply').onclick = () => {
     tip.innerHTML = TIP_DEFAULT; tip.className = 'tip';
     maskCustom.classList.remove('show');
     finished = false;
-    GROUPS.forEach(g => { g.done = false; resetGroup(g); });
+    GROUPS.forEach((g, i) => { g.done = false; resetGroup(g, i !== curGroup); });
     return;
   }
 
@@ -2767,13 +2770,13 @@ function resetAll() {
   rollRoundChars();                   // 本轮出过的字归档，新的一轮重新计数
   rollPinyinLadder();                 // 每局重新随机难度台阶
   layoutTrack();
-  GROUPS.forEach(g => {
+  GROUPS.forEach((g, i) => {
     if (qTimers.has(g)) clearTimeout(qTimers.get(g));
     g.progress = 0; g.done = false; g.lock = false;
     g.scEl.innerHTML = `0<small>/10</small>`;
     g.chipEl.querySelector('small').textContent = '0/10';
     placeRunner(g, false);
-    resetGroup(g);
+    resetGroup(g, i !== curGroup);       // H5 只读当前台，其它台切过去时再读
   });
   // H5 一次只显示一个答题台：优先加载当前台，别的组切过去时再加载
   preloadQueue.length = 0;
@@ -3119,7 +3122,7 @@ layoutTrack();
 loadAvatars();
 GROUPS.forEach(paintAvatar);
 GROUPS.forEach(g => placeRunner(g, false));
-GROUPS.forEach(resetGroup);
+GROUPS.forEach((g, i) => resetGroup(g, i !== curGroup));
 syncStations();
 
 /* ---------------- 1 天试用 · 付费解锁 ---------------- */
@@ -3609,7 +3612,7 @@ function refreshPremiumUI() {
   const labels = { mul: '数学 · 乘法练习', en: '英语 · 发音练习', 'en-word': '英语 · 单词练习' };
   ['mul', 'en', 'en-word'].forEach(v => {
     const o = subjectSel.querySelector(`option[value="${v}"]`);
-    if (o) o.textContent = (premExpired() ? '🔒 ' : '') + labels[v];
+    if (o) o.textContent = (premExpired() ? '🔒 ' : '⭐ ') + labels[v];   // 高级玩法前保留小图标（到期换成锁）
   });
   // 提示条：试用中显示剩余天数；已付费显示到期日；试用结束提示续费
   if (premExpired() && !demoPay) {
