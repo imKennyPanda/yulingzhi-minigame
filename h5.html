@@ -44,13 +44,13 @@
   .en-top i.en-cn { font-style: normal; font-size: 24px; font-weight: 800; color: #4A3E5C; }
   .en-top i.en-cn.is-hidden { display: none; }
   .en-slot-seg { font-size: 20px; }
-  /* 英语单词练习：完整英文 + 可点击的音标段 */
+  /* 英语单词练习：完整英文 + 静态音标标记（不发音） */
   .enw-segs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
   .enw-seg {
-    padding: 7px 16px; border-radius: 999px; background: #F4ECF9; color: #7A5AA6;
-    font-size: 17px; font-weight: 800; cursor: pointer; user-select: none;
+    padding: 7px 16px; border-radius: 999px; background: #F7F2FB; color: #7A5AA6;
+    border: 1px dashed #DCCDEC;
+    font-size: 17px; font-weight: 800; cursor: default; user-select: none;
   }
-  .enw-seg:active { transform: scale(.96); }
   .enw-tip { margin-top: 8px; font-size: 11px; color: #B9A7C8; font-weight: 700; text-align: center; }
 
   /* ---------- 模式页签 ---------- */
@@ -1378,32 +1378,7 @@ function pickEnVoice() {
 }
 if ('speechSynthesis' in window) { pickEnVoice(); speechSynthesis.onvoiceschanged = pickEnVoice; }
 const enTtsOk = () => ('speechSynthesis' in window) && typeof SpeechSynthesisUtterance !== 'undefined';
-const speakEn = (text, rate, onDone) => speak(text, rate || 0.85, onDone, 'en-US');
-/* 英语音标统一用同一个 en-US 语音朗读（优先女声），音标表、发音练习、单词练习共用。
-   speechSynthesis 不可用时才退回 audio/ipa 的真人录音。 */
-let enSeq = 0;
-function speakEnSeq(parts, gap) {
-  stopIpa();
-  try { speechSynthesis.cancel(); } catch (e) {}
-  const token = ++enSeq;
-  const list = (parts || []).filter(p => p && p.text);
-  if (!list.length) return;
-  if (!enTtsOk()) { if (list[0].ipa) playIpa(list[0].ipa); return; }
-  let i = 0;
-  const next = () => {
-    if (token !== enSeq || i >= list.length) return;
-    const p = list[i++];
-    const u = new SpeechSynthesisUtterance(String(p.text));
-    u.lang = 'en-US';
-    if (enVoice) u.voice = enVoice;
-    if (!enFemaleVoice) u.pitch = 1.15;
-    u.rate = p.rate || 0.75;
-    u.onend = () => setTimeout(() => { if (token === enSeq) next(); }, gap || 0);
-    u.onerror = u.onend;
-    try { speechSynthesis.speak(u); } catch (e) { next(); }
-  };
-  next();
-}
+const speakEn = (text, rate, onDone) => speak(text, rate || 0.85, onDone, 'en-US');   // 整词/例词：en-US 女声 TTS
 /* 音标段发音：把 IPA 段映射成 TTS 近似读法（映射取自音标表数据），无映射时原样朗读 */
 let ipaSayMap = null;
 function segSayText(seg) {
@@ -1426,29 +1401,38 @@ function segSayText(seg) {
   }
   return out || seg;
 }
-/* 音标真人录音（audio/ipa/*.wav，来源与许可见 audio/ipa/README.md）。
-   音标表与音标游戏共用同一套录音和同一套拆分规则，保证两处发音完全一致。
-   一个音标可能由一个或多个音素组成（双元音、ɜːr、tʃ、tr 等），按顺序播放。 */
+/* 音标标准录音（audio/ipa48/*.wav，来源与许可见 audio/ipa48/README.md）。
+   48 个音标全部使用真人标准录音，音标表与发音练习共用同一套录音和拆分规则。
+   一个音标可能由多个音素组成（双元音、ɜːr、tʃ、tr 等），按顺序播放。 */
 const IPA_CLIPS = {
-  'i':'i', 'ɪ':'ih', 'e':'eh', 'ɛ':'eh', 'æ':'ae', 'ɜ':'er', 'ɝ':'er', 'ə':'schwa', 'ʌ':'uh',
-  'u':'u', 'ʊ':'ups', 'ɔ':'aw', 'ɒ':'aw', 'ɑ':'ah', 'a':'a', 'o':'o', 'ɨ':'ih', 'ɘ':'schwa',
-  'p':'p', 't':'t', 'k':'k', 'f':'f', 's':'s', 'θ':'th', 'ʃ':'sh', 'tʃ':'ch',
-  'b':'b', 'd':'d', 'g':'g', 'ɡ':'g', 'v':'v', 'z':'z', 'ð':'dh', 'ʒ':'zh', 'dʒ':'j',
-  'm':'m', 'n':'n', 'ŋ':'ng', 'l':'l', 'r':'r', 'ɹ':'r', 'j':'y', 'w':'w', 'h':'h'
+  'i':'vowel-i-long', 'ɪ':'vowel-i-short', 'e':'vowel-e-short', 'ɛ':'vowel-e-short', 'æ':'vowel-ae-short',
+  'ɜ':'vowel-er-long', 'ɝ':'vowel-er-long', 'ə':'vowel-schwa-short', 'ʌ':'vowel-uh-short',
+  'u':'vowel-u-long', 'ʊ':'vowel-u-short', 'ɔ':'vowel-aw-long', 'ɒ':'vowel-o-short',
+  'ɑ':'vowel-a-long', 'a':'vowel-ae-short',
+  'p':'consonant-p', 't':'consonant-t', 'k':'consonant-k', 'f':'consonant-f', 's':'consonant-s',
+  'θ':'consonant-th-soft', 'ʃ':'consonant-sh',
+  'b':'consonant-b', 'd':'consonant-d', 'g':'consonant-g', 'ɡ':'consonant-g', 'v':'consonant-v',
+  'z':'consonant-z', 'ð':'consonant-th-voice', 'ʒ':'consonant-zh',
+  'm':'consonant-m', 'n':'consonant-n', 'ŋ':'consonant-ng', 'l':'consonant-l',
+  'r':'consonant-r', 'ɹ':'consonant-r', 'j':'consonant-y', 'w':'consonant-w', 'h':'consonant-h'
 };
 /* 先匹配多字符音标，再落到单音素 */
 const IPA_LONG = [
-  ['tʃ', ['ch']], ['dʒ', ['j']],
-  ['eɪ', ['e', 'ih']], ['aɪ', ['a', 'ih']], ['ɔɪ', ['aw', 'ih']], ['oʊ', ['o', 'ups']], ['aʊ', ['a', 'ups']],
-  ['ɪr', ['ih', 'r']], ['er', ['eh', 'r']], ['ʊr', ['ups', 'r']],
-  ['ɚ', ['schwa', 'r']], ['ɝ', ['er', 'r']],
-  ['ts', ['t', 's']], ['dz', ['d', 'z']], ['tr', ['t', 'r']], ['dr', ['d', 'r']]
+  ['tʃ', ['consonant-ch']], ['dʒ', ['consonant-j']],
+  ['eɪ', ['diphthong-ei']], ['aɪ', ['diphthong-ai']], ['ɔɪ', ['diphthong-oi']],
+  ['oʊ', ['diphthong-ou']], ['əʊ', ['diphthong-ou']], ['aʊ', ['diphthong-au']],
+  ['ɪr', ['diphthong-ear', 'consonant-r']], ['er', ['diphthong-air', 'consonant-r']],
+  ['ʊr', ['diphthong-ure', 'consonant-r']],
+  ['ɜr', ['vowel-er-long', 'consonant-r']], ['ɝr', ['vowel-er-long', 'consonant-r']],
+  ['ɝ', ['vowel-er-long', 'consonant-r']],
+  ['ɚ', ['vowel-schwa-short', 'consonant-r']],
+  ['tr', ['consonant-tr']], ['dr', ['consonant-dr']], ['ts', ['consonant-ts']], ['dz', ['consonant-dz']]
 ];
 let ipaPlaySeq = 0, ipaCurrent = null;
 const ipaAudioCache = {};
 function ipaAudioOf(slug) {
   let a = ipaAudioCache[slug];
-  if (!a) { a = new Audio('audio/ipa/' + slug + '.wav'); a.preload = 'auto'; ipaAudioCache[slug] = a; }
+  if (!a) { a = new Audio('audio/ipa48/' + slug + '.wav'); a.preload = 'auto'; ipaAudioCache[slug] = a; }
   return a;
 }
 function ipaClips(text) {
@@ -1470,7 +1454,6 @@ function warmIpa(text) {
 }
 function stopIpa() {
   ipaPlaySeq++;
-  enSeq++;
   if (ipaCurrent) { try { ipaCurrent.pause(); } catch (e) {} ipaCurrent = null; }
 }
 function playIpa(text, onDone) {
@@ -1516,8 +1499,7 @@ function playIpa(text, onDone) {
   return true;
 }
 const enSegSpeak = seg => {
-  if (enTtsOk()) speakEn(segSayText(seg), 0.75);   // 与整词同一个 en-US 女声
-  else playIpa(seg);                               // 无语音合成时才用录音
+  if (!playIpa(seg) && enTtsOk()) speakEn(segSayText(seg), 0.75);   // 优先标准录音；无录音时才用 TTS 兜底
 };
 /* 高级版 · 乘法口诀朗读（中文 TTS） */
 const speakMul = (a, b, ans, onDone) => speak(ans === undefined ? `${a} 乘以 ${b} 等于几` : `${a} 乘以 ${b} 等于 ${ans}`, 0.8, onDone);
@@ -1984,11 +1966,15 @@ GROUPS.forEach((g, i) => {
       if (g.q.kind === 'en') { g.showCn = !g.showCn; render(g); return; }   // 英语：显示/隐藏中文
       g.showPy = !g.showPy; render(g); return;                              // 拼音：显示/隐藏拼音
     }
-    if (g.q.kind === 'en' || g.q.kind === 'enw') {
+    if (g.q.kind === 'en') {
       const segEl = e.target.closest('[data-en-seg]');
       if (segEl) { enSegSpeak(segEl.dataset.enSeg); return; }               // 点音标段听该段音
       const w = e.target.closest('[data-en-say]');
       if (w) { speakEn(g.q.w, 0.85); return; }                              // 点单词听发音
+      return;
+    }
+    if (g.q.kind === 'enw') {                                               // 单词练习：音标只显示，不发音
+      if (e.target.closest('[data-en-say]')) speakEn(g.q.w, 0.85);
       return;
     }
     const t = e.target.closest('[data-say]');
@@ -2224,8 +2210,8 @@ function enWordDiagram(q) {
       <b class="en-word">${q.w}</b>
       <span class="pyb-side"><span>🔊 点击听</span></span>
     </div>
-    <div class="enw-segs">${q.seg.map(s => `<span class="enw-seg" data-en-seg="${s}">${s}</span>`).join('')}</div>
-    <div class="enw-tip">点音标段或单词都可以听发音</div>
+    <div class="enw-segs">${q.seg.map(s => `<span class="enw-seg">${s}</span>`).join('')}</div>
+    <div class="enw-tip">音标仅作标记 · 点单词可以听发音</div>
   </div>`;
 }
 function diagram(q, pick, pickSm, pickYm, pickTone, showPy, pickWhole) {
@@ -2431,7 +2417,7 @@ function renderPad(g) {
 }
 function render(g) {
   g.qEl.innerHTML = diagramHTML(g);
-  if (!enTtsOk() && (g.q.kind === 'en' || g.q.kind === 'enw')) warmIpa((g.q.seg || []).join(''));   // 无语音合成时才预载录音
+  if (g.q.kind === 'en') warmIpa((g.q.seg || []).join(''));                 // 发音练习预载标准录音
   renderPad(g);
   g.okEl.disabled = g.q.kind === 'pyblend'
     ? (g.q.whole ? !g.pickWhole : !(g.pickSm && g.pickYm && g.pickTone))
@@ -3036,7 +3022,7 @@ function buildIpaTable() {
       + F.map(x => tableCard(x.p, `${x.ex} ${x.cn}`, ` data-say="${x.ex}" data-kind="en"`)).join('') + '</div>';
   }
   const total = G.reduce((a, g) => a + g.subs.reduce((b, s) => b + s.items.length, 0), 0);
-  let html = `<h4>ABC 音标表（美式发音 ${total} 个 · 点击听音标，0.5 秒后读例词）</h4>`;
+  let html = `<h4>ABC 音标表（标准真人发音 ${total} 个 · 点击听音标，0.5 秒后读例词）</h4>`;
   G.forEach(grp => {
     html += `<div class="ipa-t">${grp.t}</div>`;
     grp.subs.forEach(s => {
@@ -3083,8 +3069,8 @@ maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
   if (!t) return;
   if (t.dataset.ipa) {
-    // 先读音标，停 0.5 秒再读例词；两者用同一个 en-US 女声
-    speakEnSeq([{ text: t.dataset.say, rate: 0.7, ipa: t.dataset.ipa }, { text: t.dataset.ex, rate: 0.75 }], 500);
+    // 先播标准音标录音，读完停 0.5 秒再读例词
+    playIpa(t.dataset.ipa, () => setTimeout(() => speakEn(t.dataset.ex, 0.75), 500));
     return;
   }
   if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
