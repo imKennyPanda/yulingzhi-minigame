@@ -139,7 +139,8 @@
       var st = statusOf(it);
       var note = [it.note, it.batch].filter(Boolean).join(' · ');
       var devs = it.devices || [];
-      var ops = '<button type="button" class="btn mini ghost" data-act="copy" data-id="' + A.esc(it.id) + '">复制</button>';
+      var ops = '<button type="button" class="btn mini ghost" data-act="copy" data-id="' + A.esc(it.id) + '">复制</button>' +
+        '<button type="button" class="btn mini ghost" data-act="note" data-id="' + A.esc(it.id) + '">备注</button>';
       if (it.status !== 'revoked') {
         ops += '<button type="button" class="btn mini danger" data-act="revoke" data-id="' + A.esc(it.id) + '">作废</button>';
       }
@@ -315,6 +316,30 @@
     var act = btn.dataset.act;
     var id = btn.dataset.id;
     if (act === 'copy') { A.copy(id.length === 8 ? id.slice(0, 4) + '-' + id.slice(4) : id); return; }
+    if (act === 'note') {
+      var it = state.byId[id];
+      if (!it) return;
+      var cur = (it.note || '').trim();
+      var v = prompt('激活码 ' + it.code + ' 的备注（留空清除备注，批次不变）：', cur);
+      if (v === null) return;
+      var note = v.trim().slice(0, 100);
+      if (note === cur) return;
+      btn.disabled = true;
+      A.call('setnote', { code: id, note: note }).then(function (r) {
+        if (!r.ok) throw new Error(r.msg || '保存失败');
+        it.note = note;
+        var cell = btn.closest('tr').children[5];
+        var show = [note, it.batch].filter(Boolean).join(' · ');
+        cell.textContent = show;
+        cell.title = show;
+        btn.disabled = false;
+        A.toast('备注已保存');
+      }).catch(function (err) {
+        btn.disabled = false;
+        A.toast(err.message || err, true);
+      });
+      return;
+    }
     if (act === 'revoke') {
       if (!confirm('确定作废 ' + id + '？作废后用户将无法再激活。')) return;
       A.call('revoke', { code: id }).then(function (r) {

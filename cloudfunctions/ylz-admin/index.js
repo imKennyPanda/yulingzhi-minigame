@@ -12,6 +12,7 @@
  *   import  导入已有明文码：{ codes:["XXXX-XXXX",...], expireAt, note, batch }
  *   list    查询：{ status?, batch?, code?, limit? }
  *   revoke  作废：{ code }
+ *   setnote 修改备注：{ code, note }
  *   unbind  解绑设备（恢复为未使用，可给换设备的用户重新激活）：{ code }
  *   rebind  直接绑到指定设备：{ code, deviceId }
  *   stats   统计各状态数量
@@ -266,6 +267,111 @@ async function delVisits(p) {
   return { ok: true, removed, deviceId: deviceId || '', day };
 }
 
+/* 修改已有激活码的备注 */
+async function setNote(p) {
+  const n = normCode(p.code || p.id);
+  if (n.length < 6) return { ok: false, msg: '缺少 code' };
+  const doc = await getDoc('activation_codes', n);
+  if (!doc) return { ok: false, msg: '激活码不存在' };
+  const note = String(p.note || '').slice(0, 100);
+  await db.collection('activation_codes').doc(n).update({ note, noteUpdatedAt: Date.now() });
+  return { ok: true, code: formatCode(n), note };
+}
+
+/* ---------------- IP 归属地（与 ylz-api 同一套逻辑，供 backfillRegion 使用） ---------------- */
+const GEO_CACHE = new Map();
+const GEO_TTL = 24 * 3600 * 1000;
+function httpGetBuf(url, timeoutMs) {
+  return new Promise(resolve => {
+    const mod = url.indexOf('https:') === 0 ? require('https') : require('http');
+    let done = false;
+    const finish = b => { if (!done) { done = true; resolve(b); } };
+    const req = mod.get(url, { timeout: timeoutMs }, res => {
+      const chunks = [];
+      let size = 0;
+      res.on('data', c => { size += c.length; chunks.push(c); if (size > 16384) req.destroy(); });
+      res.on('end', () => finish(Buffer.concat(chunks)));
+      res.on('error', () => finish(null));
+    });
+    req.on('timeout', () => { req.destroy(); finish(null); });
+    req.on('error', () => finish(null));
+    setTimeout(() => finish(null), timeoutMs + 1000);
+  });
+}
+/* 按字符集解码（pconline 返回 GBK，必须显式解码，否则中文存库变乱码） */
+function decodeText(buf, charset) {
+  if (!buf) return '';
+  try { return new TextDecoder(charset).decode(buf); }
+  catch (e) { return buf.toString('utf8'); }
+}
+function cleanRegion(prov, city) {
+  prov = String(prov || '').trim();
+  city = String(city || '').trim();
+  if (!prov) return '';
+  if (!city || city === prov || prov.indexOf(city) >= 0) return prov;
+  return prov + ' ' + city;
+}
+async function geoOf(ip) {
+  const v = String(ip || '').trim();
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return '';
+  if (v === '127.0.0.1' || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(v)) return '';
+  const hit = GEO_CACHE.get(v);
+  if (hit && Date.now() - hit.at < GEO_TTL) return hit.region;
+  let region = '';
+  try {
+    const p = await httpGetBuf('https://whois.pconline.com.cn/ipJson.jsp?json=true&ip=' + encodeURIComponent(v), 2500);
+    const m = decodeText(p, 'gbk').match(/\{[\s\S]*\}/);
+    if (m) { const j = JSON.parse(m[0]); region = cleanRegion(j.pro, j.city); }
+  } catch (e) {}
+  if (!region) {
+    try {
+      const q = await httpGetBuf('http://ip-api.com/json/' + encodeURIComponent(v) + '?lang=zh-CN&fields=status,regionName,city', 2500);
+      if (q) { const j = JSON.parse(decodeText(q, 'utf-8')); if (j.status === 'success') region = cleanRegion(j.regionName, j.city); }
+    } catch (e) {}
+  }
+  if (region) GEO_CACHE.set(v, { at: Date.now(), region });   // 只缓存成功结果，失败下次重试
+  return region;
+}
+
+/* 回填历史访问/访客记录的归属地（每次最多 30 条；region 缺失或为空才算；reset:true 先清空已有值重新解析） */
+async function backfillRegion(p) {
+  const max = Math.min(Math.max(Number(p.limit) || 15, 1), 30);
+  const out = { ok: true, visits: 0, visitors: 0, reset: 0, details: [] };
+  if (p.reset) {
+    for (const col of ['visits', 'visitors']) {
+      for (;;) {
+        let r;
+        try { r = await db.collection(col).where({ region: db.command.neq('') }).limit(100).get(); }
+        catch (e) { break; }
+        const docs = r.data || [];
+        if (!docs.length) break;
+        for (const d of docs) {
+          try { await db.collection(col).doc(d._id).update({ region: '' }); out.reset++; } catch (e) {}
+        }
+        if (docs.length < 100) break;
+      }
+    }
+  }
+  const missing = db.command.or(db.command.exists(false), db.command.eq(''));
+  async function fillCol(col) {
+    let n = 0;
+    let r;
+    try {
+      r = await db.collection(col).where({ region: missing }).limit(max).get();
+    } catch (e) { return 0; }
+    for (const d of (r.data || [])) {
+      const region = d.ip ? await geoOf(d.ip) : '';
+      try { await db.collection(col).doc(d._id).update({ region: region || '' }); } catch (e) { continue; }
+      n++;
+      out.details.push({ col, ip: d.ip || '', region: region || '' });
+    }
+    return n;
+  }
+  out.visits = await fillCol('visits');
+  out.visitors = await fillCol('visitors');
+  return out;
+}
+
 async function ping() {
   const steps = [];
   try { await db.createCollection('activation_codes'); steps.push('createCollection ok'); }
@@ -297,6 +403,8 @@ exports.main = async (event) => {
     if (action === 'import') return await importCodes(e);
     if (action === 'list') return await listCodes(e);
     if (action === 'revoke') return await revokeCode(e);
+    if (action === 'setnote') return await setNote(e);
+    if (action === 'backfillregion') return await backfillRegion(e);
     if (action === 'unbind') return await unbindCode(e);
     if (action === 'rebind') return await rebindCode(e);
     if (action === 'stats') return await stats();

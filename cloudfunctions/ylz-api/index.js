@@ -158,6 +158,63 @@ async function touchTrial(ctx) {
   return t + TRIAL_MS;
 }
 
+/* ---------------- IP 归属地（省/市，尽力而为，不阻塞主流程） ---------------- */
+const GEO_CACHE = new Map();            // ip -> { at, region }
+const GEO_TTL = 24 * 3600 * 1000;
+function httpGetBuf(url, timeoutMs) {
+  return new Promise(resolve => {
+    const mod = url.indexOf('https:') === 0 ? require('https') : require('http');
+    let done = false;
+    const finish = b => { if (!done) { done = true; resolve(b); } };
+    const req = mod.get(url, { timeout: timeoutMs }, res => {
+      const chunks = [];
+      let size = 0;
+      res.on('data', c => { size += c.length; chunks.push(c); if (size > 16384) req.destroy(); });
+      res.on('end', () => finish(Buffer.concat(chunks)));
+      res.on('error', () => finish(null));
+    });
+    req.on('timeout', () => { req.destroy(); finish(null); });
+    req.on('error', () => finish(null));
+    setTimeout(() => finish(null), timeoutMs + 1000);
+  });
+}
+/* 按字符集解码（pconline 返回 GBK，必须显式解码，否则中文存库变乱码） */
+function decodeText(buf, charset) {
+  if (!buf) return '';
+  try { return new TextDecoder(charset).decode(buf); }
+  catch (e) { return buf.toString('utf8'); }
+}
+function cleanRegion(prov, city) {
+  prov = String(prov || '').trim();
+  city = String(city || '').trim();
+  if (!prov) return '';
+  if (!city || city === prov || prov.indexOf(city) >= 0) return prov;
+  return prov + ' ' + city;
+}
+async function geoOf(ip) {
+  const v = String(ip || '').trim();
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return '';
+  if (v === '127.0.0.1' || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(v)) return '';
+  const hit = GEO_CACHE.get(v);
+  if (hit && Date.now() - hit.at < GEO_TTL) return hit.region;
+  let region = '';
+  /* ① 太平洋电脑网 ip 库（中文，含省市；GBK 编码） */
+  try {
+    const p = await httpGetBuf('https://whois.pconline.com.cn/ipJson.jsp?json=true&ip=' + encodeURIComponent(v), 2500);
+    const m = decodeText(p, 'gbk').match(/\{[\s\S]*\}/);
+    if (m) { const j = JSON.parse(m[0]); region = cleanRegion(j.pro, j.city); }
+  } catch (e) {}
+  /* ② ip-api.com 兜底（中文，UTF-8） */
+  if (!region) {
+    try {
+      const q = await httpGetBuf('http://ip-api.com/json/' + encodeURIComponent(v) + '?lang=zh-CN&fields=status,regionName,city', 2500);
+      if (q) { const j = JSON.parse(decodeText(q, 'utf-8')); if (j.status === 'success') region = cleanRegion(j.regionName, j.city); }
+    } catch (e) {}
+  }
+  if (region) GEO_CACHE.set(v, { at: Date.now(), region });   // 只缓存成功结果，失败下次重试
+  return region;
+}
+
 /* 访问记录：visits 记 PV，visitors 按设备记 UV/新访客 */
 async function recordVisit(body, ctx) {
   const t = Date.now();
@@ -165,11 +222,13 @@ async function recordVisit(body, ctx) {
   const deviceId = normDevice(body.deviceId) || '';
   const ip = (ctx.ip || '').slice(0, 64);
   const ua = (ctx.ua || '').slice(0, 200);
+  let visitId = '';
   try {
-    await db.collection('visits').add({
+    const r = await db.collection('visits').add({
       ts: t, day: new Date(t + 8 * 3600 * 1000).toISOString().slice(0, 10),
       deviceId, page, ip, ua, ref: String(body.ref || '').slice(0, 200)
     });
+    visitId = (r && r.id) || '';
   } catch (e) { console.error('[ylz-api] visit', e && (e.message || e)); }
   if (deviceId) {
     try {
@@ -177,6 +236,14 @@ async function recordVisit(body, ctx) {
       if (v) await db.collection('visitors').doc(deviceId).update({ lastSeen: t, page, ip, ua });
       else await db.collection('visitors').doc(deviceId).set({ firstSeen: t, lastSeen: t, page, ip, ua });
     } catch (e) {}
+  }
+  /* 归属地异步解析，成功后补写 region（不影响 verify 响应延迟） */
+  if (ip) {
+    geoOf(ip).then(region => {
+      if (!region) return;
+      if (visitId) { try { db.collection('visits').doc(visitId).update({ region }); } catch (e) {} }
+      if (deviceId) { try { db.collection('visitors').doc(deviceId).update({ region }); } catch (e) {} }
+    }).catch(() => {});
   }
 }
 

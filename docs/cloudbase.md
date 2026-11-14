@@ -31,8 +31,8 @@ admin/                           后台样式与公共脚本（登录、请求�
 | `activation_codes` | 规范化激活码（如 `AB12CD34`） | status: unused / used / revoked、expireAt、devices（最多 3 台）、deviceId（首台，兼容旧数据）、usedAt、note、batch |
 | `devices` | 设备 ID | 该设备当前激活的码、到期时间 |
 | `trial_fingerprints` | sha256(IP + UA) | 首次访问时间，服务端据此计算 1 天试用，清缓存/改本地时间无效 |
-| `visits` | 自增 | 每次打开页面一条：ts、day（+08:00）、deviceId、page(h5/pc)、ip、ua、ref，用于 PV |
-| `visitors` | 设备 ID | firstSeen / lastSeen / page / ip / ua，用于 UV 与新访客 |
+| `visits` | 自增 | 每次打开页面一条：ts、day（+08:00）、deviceId、page(h5/pc)、ip、region(归属地 省 市)、ua、ref，用于 PV |
+| `visitors` | 设备 ID | firstSeen / lastSeen / page / ip / region / ua，用于 UV 与新访客 |
 | `config` | `admin` | 管理后台口令的 sha256（不存明文） |
 
 > 所有集合都不要开放给客户端直连。云函数使用管理权限读写；在控制台把集合权限设为「所有用户不可读写」即可。
@@ -84,9 +84,18 @@ ADMIN_TOKEN='你的口令（至少 8 位）' node tools/cloudbase-admin.js setad
 - 口令保存在浏览器 `sessionStorage`（勾选「记住这台设备」则存 `localStorage`），退出即清除。
 - 忘记口令：重新执行一次 `setadmin` 即可覆盖。
 - **激活码管理**：批量生成（1–200 个，可设有效期/备注/批次，明文只显示一次，可复制或下载 TXT）、
-  按状态筛选（未使用 / 已使用 / 已作废 / 已过期）、按完整激活码查询、作废、解绑、删除。
+  按状态筛选（未使用 / 已使用 / 已作废 / 已过期）、按完整激活码查询、作废、解绑、删除、**修改备注**（行内「备注」按钮）。
 - **数据看板**：今日 / 近 7 天 / 近 30 天 / 全部的 PV、UV、新访客；下方访问明细可按时间范围、
-  H5/PC、设备 ID 筛选并分页。PV 只在上报 `visit:1` 时记录，10 分钟一次的状态刷新不会重复计数。
+  H5/PC、设备 ID 筛选并分页，明细含**归属地（省 市）**列。PV 只在上报 `visit:1` 时记录，10 分钟一次的状态刷新不会重复计数。
+
+### IP 归属地（省市）
+
+- `ylz-api` 记录访问时异步解析 IP 归属地（pconline 中文库 → ip-api.com 兜底，内存缓存 24h），
+  结果写入 `visits.region` / `visitors.region`（如 `广东省 深圳市`），解析失败留空、不影响 verify 响应。
+- **存量数据回填**（部署后执行一次或多次，每次约 15 条，可重复跑直至回完）：
+  ```bash
+  cloudbase fn invoke ylz-admin --params '{"action":"backfillRegion"}'
+  ```
 
 ### 一码多设备（手机 / 平板 / 电脑）
 
@@ -129,6 +138,9 @@ node tools/cloudbase-admin.js rebind AB12-CD34 <deviceId>
 
 # 作废（退款/异常）
 node tools/cloudbase-admin.js revoke AB12-CD34
+
+# 修改某个码的备注（网页后台行内「备注」按钮等效）
+cloudbase fn invoke ylz-admin --params '{"action":"setnote","code":"AB12-CD34","note":"渠道备注"}'
 
 # 彻底删除一条记录（清理测试码/误导入）
 node tools/cloudbase-admin.js del AB12-CD34

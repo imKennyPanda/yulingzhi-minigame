@@ -66,9 +66,9 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>时间</th><th>页面</th><th>设备</th><th>IP</th><th>来源</th><th>UA</th></tr>
+          <tr><th>时间</th><th>页面</th><th>设备</th><th>IP</th><th>归属地</th><th>来源</th><th>UA</th></tr>
         </thead>
-        <tbody id="visitBody"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody>
+        <tbody id="visitBody"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
       </table>
     </div>
     <div class="pager">
@@ -130,7 +130,7 @@
   function render(rows) {
     var body = $('visitBody');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="empty">没有访问记录</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="empty">没有访问记录</td></tr>';
       return;
     }
     body.innerHTML = rows.map(function (d) {
@@ -140,6 +140,9 @@
         ? '<span class="ellipsis" style="display:inline-block;max-width:150px" title="' + A.esc(d.deviceId) + '">' + A.esc(d.deviceId) + '</span>'
         : '<span class="muted">—</span>';
       var ip = d.ip ? A.esc(d.ip) : '<span class="muted">—</span>';
+      var region = d.region
+        ? '<span title="' + A.esc(d.region) + '">' + A.esc(d.region) + '</span>'
+        : '<span class="muted">—</span>';
       var ua = d.ua
         ? '<span class="ellipsis" style="display:inline-block;max-width:260px" title="' + A.esc(d.ua) + '">' + A.esc(d.ua) + '</span>'
         : '<span class="muted">—</span>';
@@ -148,6 +151,7 @@
         '<td>' + (cls ? '<span class="pill ' + cls + '">' + page + '</span>' : '<span class="muted">—</span>') + '</td>' +
         '<td class="mono">' + dev + '</td>' +
         '<td class="mono">' + ip + '</td>' +
+        '<td>' + region + '</td>' +
         '<td>' + refText(d.ref) + '</td>' +
         '<td>' + ua + '</td>' +
       '</tr>';
@@ -168,7 +172,7 @@
     var params = { range: state.range, skip: state.skip, limit: state.limit };
     if (state.page) params.page = state.page;
     if (state.deviceId) params.deviceId = state.deviceId;
-    $('visitBody').innerHTML = '<tr><td colspan="6" class="empty">加载中…</td></tr>';
+    $('visitBody').innerHTML = '<tr><td colspan="7" class="empty">加载中…</td></tr>';
     A.call('visits', params).then(function (r) {
       if (!r.ok) throw new Error(r.msg || '加载失败');
       state.total = r.total || 0;
@@ -176,7 +180,7 @@
       render(r.items || []);
       updatePager();
     }).catch(function (e) {
-      $('visitBody').innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + A.esc(e.message || e) + '</td></tr>';
+      $('visitBody').innerHTML = '<tr><td colspan="7" class="empty">加载失败：' + A.esc(e.message || e) + '</td></tr>';
       A.toast('访问明细加载失败', true);
     });
   }

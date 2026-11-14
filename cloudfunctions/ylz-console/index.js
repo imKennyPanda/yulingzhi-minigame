@@ -14,6 +14,7 @@
  *   unbind    解绑：{ code }
  *   rebind    换绑：{ code, deviceId }
  *   del       删除：{ code }
+ *   setnote   修改备注：{ code, note }
  *   visits    访问明细：{ range?, page?, deviceId?, skip?, limit? }
  */
 const crypto = require('crypto');
@@ -265,6 +266,17 @@ async function delCode(p) {
   return { ok: true, deleted: n };
 }
 
+/* 修改已有激活码的备注（批次保留不动） */
+async function setNote(p) {
+  const n = normCode(p.code || p.id);
+  if (n.length < 6) return fail('BAD_CODE', '缺少激活码');
+  const doc = await getDoc('activation_codes', n);
+  if (!doc) return fail('NOT_FOUND', '激活码不存在');
+  const note = String(p.note || '').slice(0, 100);
+  await db.collection('activation_codes').doc(n).update({ note, noteUpdatedAt: Date.now() });
+  return { ok: true, code: n.length === 8 ? formatCode(n) : n, note };
+}
+
 /* ---------------- 统计 ---------------- */
 function rangeStart(key) {
   const now = Date.now();
@@ -319,7 +331,7 @@ async function visits(p) {
     ok: true, skip, limit, total, since: start, count: (r.data || []).length,
     items: (r.data || []).map(d => ({
       ts: d.ts, day: d.day || '', page: d.page || '',
-      deviceId: d.deviceId || '', ip: d.ip || '', ua: d.ua || '', ref: d.ref || ''
+      deviceId: d.deviceId || '', ip: d.ip || '', region: d.region || '', ua: d.ua || '', ref: d.ref || ''
     }))
   };
 }
@@ -348,6 +360,7 @@ async function handle(event) {
     else if (action === 'unbind') out = await unbindCode(body);
     else if (action === 'rebind') out = await rebindCode(body);
     else if (action === 'del') out = await delCode(body);
+    else if (action === 'setnote') out = await setNote(body);
     else if (action === 'visits') out = await visits(body);
     else out = fail('BAD_ACTION', '未知操作');
   } catch (err) {
