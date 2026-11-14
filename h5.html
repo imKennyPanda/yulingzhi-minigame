@@ -1949,7 +1949,7 @@ GROUPS.forEach((g, i) => {
   g.helpEl = el.querySelector('.btn.help');
   el.querySelector('.btn:not(.go):not(.help)').onclick = () => {
     if (g.done || g.lock || finished) return;
-    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; render(g);
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; g.enPicks = []; render(g);
   };
   g.helpEl.onclick = () => openHelp(g);
   g.okEl.onclick = () => submit(g);

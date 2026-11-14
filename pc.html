@@ -2255,7 +2255,7 @@ GROUPS.forEach(g => {
   g.helpEl = el.querySelector(`#hp${g.no}`);
   el.querySelector(`#cl${g.no}`).onclick = () => {
     if (g.done || g.lock || finished) return;
-    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; render(g);
+    g.pick = null; g.pickSm = null; g.pickYm = null; g.pickYmParts = []; g.pickTone = null; g.pickWhole = null; g.enPicks = []; render(g);
   };
   g.helpEl.onclick = () => openHelp(g);
   g.okEl.onclick = () => submit(g);
