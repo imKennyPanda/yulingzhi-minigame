@@ -3114,8 +3114,8 @@ function tableCard(big, small, attrs, cls) {
 }
 function buildAbcTable() {
   const D = (window.PREMIUM_DATA && window.PREMIUM_DATA.alphabet) || [];
-  return `<h4>ABC 字母表（26 个 · 点击听字母发音）</h4><div class="c-grid">`
-    + D.map(x => tableCard(x.L, x.word, ` data-say="${x.L}" data-kind="en"`)).join('') + '</div>';
+  return `<h4>ABC 字母表（26 个 · 点击听字母，0.5 秒后读例词）</h4><div class="c-grid">`
+    + D.map(x => tableCard(x.L, x.word, ` data-say="${x.L}" data-ex="${x.word}" data-kind="en"`)).join('') + '</div>';
 }
 function buildIpaTable() {
   const D = (window.PREMIUM_DATA || {});
@@ -3169,12 +3169,28 @@ document.getElementById('chartFs').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
 };
+let chartSaySeq = 0;               // 图表点读序号：快速点下一张卡时，作废上一张还没读的例词
 maskChart.addEventListener('click', e => {
   const t = e.target.closest('[data-say]');
   if (!t) return;
+  const seq = ++chartSaySeq;
   if (t.dataset.ipa) {
     // 先播标准音标录音，读完停 0.5 秒再读例词
-    playIpa(t.dataset.ipa, () => setTimeout(() => speakEn(t.dataset.ex, 0.75), 500));
+    playIpa(t.dataset.ipa, () => {
+      if (seq !== chartSaySeq) return;
+      setTimeout(() => { if (seq === chartSaySeq) speakEn(t.dataset.ex, 0.75); }, 500);
+    });
+    return;
+  }
+  if (t.dataset.ex) {
+    // ABC 字母表：先读字母，读完停 0.5 秒再读例词（如 A → apple）
+    let fired = false;
+    const sayEx = () => {
+      if (fired || seq !== chartSaySeq) return; fired = true;
+      setTimeout(() => { if (seq === chartSaySeq) speakEn(t.dataset.ex, 0.75); }, 500);
+    };
+    speakEn(t.dataset.say, 0.75, sayEx);
+    setTimeout(sayEx, 3000);        // 兜底：语音合成没回调时也能读例词
     return;
   }
   if (t.dataset.kind === 'char') playCharSound(t.dataset.key, t.dataset.say);
